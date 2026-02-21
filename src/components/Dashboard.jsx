@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../supabaseClient'; // 🟢 이거 한 줄 무조건 추가!
 
-function Dashboard({ tasks, addTask }) {
+function Dashboard({ tasks, addTask, setTasks }) {
 	const thisMonthNum = new Date().getMonth() + 1;
 	const nextMonthNum = thisMonthNum === 12 ? 1 : thisMonthNum + 1;
 	const [currentMonth, setCurrentMonth] = useState(thisMonthNum);
