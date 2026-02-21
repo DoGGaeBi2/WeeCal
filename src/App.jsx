@@ -42,8 +42,10 @@ function App() {
 			.insert([{
 				title: newTask.title,
 				category: newTask.category,
-				start_time: newTask.start, 
-				end_time: newTask.end,
+				date: newTask.date,             // 🟢 추가: AI가 만든 날짜 전송
+				"dDay": newTask.dDay,           // 🟢 추가: AI가 만든 디데이 전송
+				"isWeekly": newTask.isWeekly,   // 🟢 추가: 주간 일정 여부 전송
+				"isMonthly": newTask.isMonthly, // 🟢 추가: 월간 일정 여부 전송
 				color: newTask.color || 'orange',
 				created_by: user.id
 			}])
@@ -51,7 +53,7 @@ function App() {
 
 		if (!error) setTasks(prev => [data[0], ...prev]);
 	};
-	
+
 	// App.jsx 내부 useEffect에 추가
 	const [notification, setNotification] = useState(null);
 
