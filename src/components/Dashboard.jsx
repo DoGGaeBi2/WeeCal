@@ -31,7 +31,7 @@ function Dashboard({ tasks, addTask }) {
         }, 150);
     };
 
-    // 🟢 체크박스 토글 함수 (우측 슬라이드 애니메이션 & 부드러운 상태 업데이트)
+    // 🟢 체크박스 토글 함수 (애니메이션 후 '최신 상태(prev)'로 완벽하게 업데이트)
     const toggleTask = async (id) => {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
@@ -39,26 +39,27 @@ function Dashboard({ tasks, addTask }) {
       // 1. 클릭하자마자 우측으로 스르륵 밀리는 애니메이션 시작
       setAnimatingIds(prev => [...prev, id]);
 
-      // 2. DB 업데이트 (백그라운드에서 조용히)
+      // 2. DB 업데이트
       await supabase.from('tasks').update({ completed: !task.completed }).eq('id', id);
 
-      // 3. 0.3초(애니메이션 끝난 후) 뒤에 화면 상태 진짜로 업데이트! (새로고침 안 함)
+      // 3. 0.3초(애니메이션 끝난 후) 뒤에 화면 상태 진짜로 업데이트! (수정됨: prev 사용)
       setTimeout(() => {
-        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !task.completed } : t));
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
         setAnimatingIds(prev => prev.filter(animId => animId !== id));
       }, 300);
     };
 
-	// 🟢 복수 삭제 함수 (새로고침 없이 바로 삭제되게 수정)
-	const deleteSelectedTasks = async () => {
-		if (selectedIds.length === 0) return;
-		const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
-		if (!error) {
-			setTasks(tasks.filter(t => !selectedIds.includes(t.id))); // 화면 깜빡임 없이 리스트에서 싹 지움
-			setSelectedIds([]);
-			setIsDeleteMode(false);
-		}
-	};
+    // 🟢 복수 삭제 함수 (삭제 즉시 화면에서 바로 사라지게 수정)
+    const deleteSelectedTasks = async () => {
+      if (selectedIds.length === 0) return;
+      const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
+      if (!error) {
+        // (수정됨: prev 사용해서 화면 딜레이 없이 즉각 삭제 반영)
+        setTasks(prev => prev.filter(t => !selectedIds.includes(t.id))); 
+        setSelectedIds([]);
+        setIsDeleteMode(false);
+      }
+    };
 
     // 필터링 로직
     const filteredTasks = tasks.filter(task => {
