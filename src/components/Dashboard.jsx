@@ -18,6 +18,9 @@ function Dashboard({ tasks, addTask }) {
 	const [isDeleteMode, setIsDeleteMode] = useState(false);
 	const [selectedIds, setSelectedIds] = useState([]);
 
+  // 🟢 여기에 스르륵 밀리는 애니메이션을 관리할 상태를 딱 하나 추가!
+	const [animatingIds, setAnimatingIds] = useState([]);
+
     // 달 변경 함수 (애니메이션 포함)
     const changeMonth = (targetMonth) => {
         if (currentMonth === targetMonth) return;
@@ -28,14 +31,34 @@ function Dashboard({ tasks, addTask }) {
         }, 150);
     };
 
-    // 체크박스 토글 함수 (DB 업데이트 후 새로고침)
+    // 🟢 체크박스 토글 함수 (우측 슬라이드 애니메이션 & 부드러운 상태 업데이트)
     const toggleTask = async (id) => {
       const task = tasks.find(t => t.id === id);
-      if (task) {
-        await supabase.from('tasks').update({ completed: !task.completed }).eq('id', id);
-        window.location.reload();
-      }
+      if (!task) return;
+
+      // 1. 클릭하자마자 우측으로 스르륵 밀리는 애니메이션 시작
+      setAnimatingIds(prev => [...prev, id]);
+
+      // 2. DB 업데이트 (백그라운드에서 조용히)
+      await supabase.from('tasks').update({ completed: !task.completed }).eq('id', id);
+
+      // 3. 0.3초(애니메이션 끝난 후) 뒤에 화면 상태 진짜로 업데이트! (새로고침 안 함)
+      setTimeout(() => {
+        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !task.completed } : t));
+        setAnimatingIds(prev => prev.filter(animId => animId !== id));
+      }, 300);
     };
+
+	// 🟢 복수 삭제 함수 (새로고침 없이 바로 삭제되게 수정)
+	const deleteSelectedTasks = async () => {
+		if (selectedIds.length === 0) return;
+		const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
+		if (!error) {
+			setTasks(tasks.filter(t => !selectedIds.includes(t.id))); // 화면 깜빡임 없이 리스트에서 싹 지움
+			setSelectedIds([]);
+			setIsDeleteMode(false);
+		}
+	};
 
     // 필터링 로직
     const filteredTasks = tasks.filter(task => {
@@ -134,16 +157,6 @@ function Dashboard({ tasks, addTask }) {
 			}
     };
 
-    // 🔵 복수 삭제 함수
-    const deleteSelectedTasks = async () => {
-      if (selectedIds.length === 0) return;
-      const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
-      if (!error) {
-        window.location.reload(); // 삭제 완료 후 화면 새로고침
-      }
-    };
-
-    
     // '자동 가공 및 등록' 버튼 클릭 시 실행되는 함수 예시
     const handleAutoRegister = (processedData) => {
       // AI가 가공해준 데이터를 addTask에 쏙 넣어주기
@@ -186,36 +199,37 @@ function Dashboard({ tasks, addTask }) {
         {/* 좌측: 태스크 목록 */}
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
-              <h3 className="font-bold text-lg text-stone-800">태스크 목록</h3>
-              
-              <div className="flex items-center gap-2">
-                {/* 🟢 [여기에 정렬 셀렉트 박스 추가!] */}
-                <select 
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value)}
-                  className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 outline-none cursor-pointer hover:bg-stone-100"
-                >
-                  <option value="기본순">기본 정렬</option>
-                  <option value="급한순">🔥 급한순</option>
-                  <option value="날짜순">📅 날짜순</option>
-                </select>
-								{/* [추가된 부분 1] 삭제 실행 버튼 */}
-								{isDeleteMode && (
-									<button onClick={deleteSelectedTasks} className="text-xs text-red-500 font-bold underline cursor-pointer hover:text-red-600">
-										선택 삭제 실행
-									</button>
-								)}
-								
-								{/* [추가된 부분 2] 삭제 모드 켜기/끄기 버튼 */}
-								<button 
-									onClick={() => setIsDeleteMode(!isDeleteMode)}
-									className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${isDeleteMode ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100'}`}
-								>
-									{isDeleteMode ? '삭제 취소' : '선택 삭제'}
+						<h3 className="font-bold text-lg text-stone-800">태스크 목록</h3>
+						
+						<div className="flex items-center gap-2">
+							{/* 🟢 1. 삭제 버튼들을 맨 왼쪽으로 이동 */}
+							{isDeleteMode && (
+								<button onClick={deleteSelectedTasks} className="text-xs text-red-500 font-bold underline cursor-pointer hover:text-red-600">
+									선택 삭제 실행
 								</button>
-            <div className="relative">
-              <button 
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
+							)}
+							<button 
+								onClick={() => setIsDeleteMode(!isDeleteMode)}
+								className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${isDeleteMode ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100'}`}
+							>
+								{isDeleteMode ? '삭제 취소' : '선택 삭제'}
+							</button>
+
+							{/* 🟢 2. 정렬 옵션을 중간으로 이동 */}
+							<select 
+								value={sortOption}
+								onChange={(e) => setSortOption(e.target.value)}
+								className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 outline-none cursor-pointer hover:bg-stone-100"
+							>
+								<option value="기본순">기본 정렬</option>
+								<option value="급한순">🔥 급한순</option>
+								<option value="날짜순">📅 날짜순</option>
+							</select>
+
+							{/* 🟢 3. 기존 필터 버튼 (맨 우측에 둠) */}
+							<div className="relative">
+								<button 
+									onClick={() => setIsFilterOpen(!isFilterOpen)}
                 className="px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 flex items-center gap-2 hover:bg-stone-100 cursor-pointer transition-all"
               >
                 <span className={`w-2 h-2 rounded-full ${filterOptions.find(opt => opt.name === selectedFilter)?.color}`}></span>
@@ -244,7 +258,10 @@ function Dashboard({ tasks, addTask }) {
 							{sortedTasks.map((task) => (
 								<div 
 									key={task.id}
-									className={`p-5 rounded-2xl flex items-center gap-4 transition-all ${
+
+									className={`p-5 rounded-2xl flex items-center gap-4 transition-all duration-300 ${
+										animatingIds.includes(task.id) ? "translate-x-10 opacity-0" : "translate-x-0 opacity-100"
+									} ${
 										task.completed ? "bg-stone-50/50 opacity-60" : "bg-stone-50 hover:bg-stone-100 border-l-4 " + 
 										(task.color === 'red' ? 'border-red-400' : task.color === 'orange' ? 'border-orange-400' : task.color === 'green' ? 'border-green-400' : task.color === 'purple' ? 'border-purple-400' : 'border-stone-300')
 									}`}
