@@ -214,7 +214,7 @@ function Dashboard({ tasks, addTask }) {
 								<div 
 									key={task.id}
 									// 🟢 여기 수정: 삭제 모드일 때는 클릭해도 줄이 안 그어지게 막음
-									onClick={() => { if(!isDeleteMode) toggleTask(task.id) }} 
+									
 									className={`p-5 rounded-2xl flex items-center gap-4 transition-all cursor-pointer ${
 										task.completed ? "bg-stone-50/50 opacity-60" : "bg-stone-50 hover:bg-stone-100 border-l-4 " + 
 										(task.color === 'red' ? 'border-red-400' : task.color === 'orange' ? 'border-orange-400' : task.color === 'green' ? 'border-green-400' : task.color === 'purple' ? 'border-purple-400' : 'border-stone-300')
