@@ -246,8 +246,13 @@ function Dashboard({ tasks, addTask }) {
                     <span className={`font-medium ${task.completed ? "text-stone-500 line-through" : "text-stone-800"}`}>
                       {task.title}
                     </span>
-                    {!task.completed && <span className="text-xs font-bold mt-1 text-stone-500">{task.category} | {task.date} ({task.dDay})</span>}
-                  </div>
+                    {!task.completed && (
+											<span className="text-xs font-bold mt-1 text-stone-500">
+												{task.category} 
+												{task.date && task.dDay ? ` | ${task.date} (${task.dDay})` : ''}
+											</span>
+										)}
+									</div>
                 </div>
               ))}
             </div>
@@ -304,12 +309,7 @@ function Dashboard({ tasks, addTask }) {
                       <p><span className="font-bold text-stone-800">{task.date}</span>: {task.title}</p>
                     </div>
                   ))}
-                {tasks.filter(t => t.isMonthly && !t.completed && parseInt(t.date.split('/')[0]) === currentMonth).map(task => (
-                    <div key={task.id} className="flex items-start gap-3">
-                    <span className={`w-3 h-3 mt-1.5 rounded-full shrink-0 bg-${task.color === 'stone' ? 'stone-300' : task.color + '-400'}`}></span>
-                    <p><span className="font-bold text-stone-800">{task.date}</span>: {task.title}</p>
-                    </div>
-                ))}
+
               </div>
             </div>
           </div>
