@@ -116,7 +116,7 @@ function Dashboard({ tasks, addTask }) {
 				setIsLoading(false);
 			}
     };
-    
+
     // 🔵 복수 삭제 함수
     const deleteSelectedTasks = async () => {
       if (selectedIds.length === 0) return;
@@ -147,7 +147,8 @@ function Dashboard({ tasks, addTask }) {
 				<textarea 
 					value={inputText}
 					onChange={(e) => setInputText(e.target.value)}
-					placeholder="고객사 메세지나 텍스트를 통째로 복사해서 붙여넣으세요... (예: 다음주 수요일 오후 2시까지 기획안 초안 마무리하기)"
+					placeholder="고객사 메세지나 텍스트를 통째로 복사해서 붙여넣으세요.
+          행사나 휴가 등의 특별 스케줄은 '행사', '휴가' 등의 단어를 넣어주세요."
 					className="w-full h-24 p-5 bg-stone-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-300 outline-none resize-none text-stone-700 placeholder-stone-400"
 				/>
 				<div className="flex justify-end mt-3">
