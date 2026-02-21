@@ -60,57 +60,61 @@ function Dashboard({ tasks, addTask }) {
       setIsLoading(true);
 
       try {
-        // [추가] 버튼을 누르는 순간의 '오늘 날짜'를 동적으로 계산
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth() + 1;
-        const date = today.getDate();
-        const todayString = `${year}년 ${month}월 ${date}일`;
+				// 버튼을 누르는 순간의 '오늘 날짜'를 동적으로 계산
+				const today = new Date();
+				const year = today.getFullYear();
+				const month = today.getMonth() + 1;
+				const date = today.getDate();
+				const todayString = `${year}년 ${month}월 ${date}일`;
 
-        // Gemini 모델 불러오기
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        
-        // AI에게 내릴 명령(프롬프트) 작성 (동적 날짜 적용!)
-        const prompt = `
-        너는 일정 관리 비서야. 오늘 날짜는 ${todayString}이야.
-        다음 입력된 일정을 분석해서 정확히 JSON 형태로만 반환해 줘.
-        
-        입력: "${inputText}"
-        
-        [조건]
-        1. title: 일정의 핵심 요약 내용
-        2. dDay: 오늘 날짜(${todayString})를 기준으로 며칠 남았는지 "D-X HH:mm까지" 형태 (예: 내일이면 D-1 15:00까지, 당일이면 D-0)
-        3. category & color: 아래 규칙을 무조건 엄격하게 따라.
-          - 입력된 텍스트의 마지막이 "행사"로 끝나면: category: "행사", color: "green"
-          - 입력된 텍스트의 마지막이 "휴가"로 끝나면: category: "휴가", color: "purple"
-          - 위 두 경우가 아닐 때는 남은 기간(D-Day)을 기준으로만 분류해:
-            - 남은 기간이 7일 미만(D-0 ~ D-6)이면: category: "긴급", color: "red"
-            - 남은 기간이 7일 이상 14일 미만(D-7 ~ D-13)이면: category: "주의", color: "orange"
-            - 남은 기간이 14일 이상(D-14 부터)이면: category: "일반", color: "stone"
-        4. date: "M/D HH:mm" 형태 (예: 2/22 15:00)
-        5. isWeekly: 남은 날짜가 7일 이내면 true, 아니면 false
-        6. isMonthly: true
-        
-        반드시 마크다운(\`\`\`json 등)을 포함하지 말고 순수 JSON 객체 {} 하나만 출력해.
-        `;
+				// Gemini 모델 불러오기
+				const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+				
+				// 🟢 수정 1: AI에게 "여러 개의 일정을 배열로 찾아내고, 문맥을 파악해라"라고 명령 변경
+				const prompt = `
+				너는 일정 관리 비서야. 오늘 날짜는 ${todayString}이야.
+				다음 입력된 텍스트를 분석해서, 안에 포함된 **모든 일정과 마감일**을 각각 분리하여 JSON 배열(Array) 형태로 반환해 줘.
+				
+				입력: "${inputText}"
+				
+				[조건]
+				1. 반환 형식: 반드시 [{...}, {...}] 형태의 JSON 배열이어야 해. 일정이 하나라도 배열 [{...}] 형태로 줘.
+				2. title: 각 일정의 핵심 요약 내용
+				3. dDay: 오늘 날짜(${todayString})를 기준으로 며칠 남았는지 "D-X HH:mm까지" 형태
+				4. category & color: 문맥을 파악해서 아래 규칙을 유연하게 적용해.
+					- 회식, 워크샵, 타운홀, 축제, 세미나, 행사 등 다수가 참여하는 이벤트 성격이면: category: "행사", color: "green"
+					- 연차, 반차, 병가, 휴가 등 개인 휴무 성격이면: category: "휴가", color: "purple"
+					- 그 외의 업무나 마감일은 남은 기간(D-Day)을 기준으로 분류:
+						- 남은 기간이 7일 미만(D-0 ~ D-6): category: "긴급", color: "red"
+						- 남은 기간이 7일 이상 14일 미만(D-7 ~ D-13): category: "주의", color: "orange"
+						- 남은 기간이 14일 이상(D-14 부터): category: "일반", color: "stone"
+				5. date: "M/D HH:mm" 형태 (예: 2/22 15:00)
+				6. isWeekly: 남은 날짜가 7일 이내면 true, 아니면 false
+				7. isMonthly: true
+				
+				반드시 마크다운(\`\`\`json 등)을 포함하지 말고 순수 JSON 배열 [...] 형태만 출력해.
+				`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-        
-        // AI가 준 텍스트를 JSON으로 변환 (마크다운 찌꺼기 제거)
-        const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const aiData = JSON.parse(cleanJson);
+				const result = await model.generateContent(prompt);
+				const responseText = result.response.text();
+				
+				// AI가 준 텍스트를 JSON으로 변환
+				const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+				const aiDataArray = JSON.parse(cleanJson);
 
-        // App.jsx에서 받아온 진짜 추가 함수 사용
-      await addTask(aiData);
-      setInputText(''); // 입력창 비우기
-        
-      } catch (error) {
-        console.error("AI API 에러:", error);
-        alert("AI가 일정을 분석하다가 꼬였나 봐. 다시 시도해 줘!");
-      } finally {
-        setIsLoading(false);
-      }
+				// 🟢 수정 2: AI가 찾아낸 일정이 여러 개일 수 있으니 반복문을 돌면서 차례대로 DB에 넣기
+				for (const aiData of aiDataArray) {
+					await addTask(aiData);
+				}
+				
+				setInputText(''); // 입력창 비우기
+				
+			} catch (error) {
+				console.error("AI API 에러:", error);
+				alert("AI가 일정을 분석하다가 꼬였나 봐. 다시 시도해 줘!");
+			} finally {
+				setIsLoading(false);
+			}
     };
     
     // 🔵 복수 삭제 함수
