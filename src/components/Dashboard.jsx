@@ -3,7 +3,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../supabaseClient'; // 🟢 이거 한 줄 무조건 추가!
 
 function Dashboard({ tasks, addTask }) {
-	const [currentMonth, setCurrentMonth] = useState(2);
+	const thisMonthNum = new Date().getMonth() + 1;
+	const nextMonthNum = thisMonthNum === 12 ? 1 : thisMonthNum + 1;
+	const [currentMonth, setCurrentMonth] = useState(thisMonthNum);
+	const [sortOption, setSortOption] = useState('기본순'); // 🟢 정렬 상태 추가
 	const [isFlipping, setIsFlipping] = useState(false);
 	const [selectedFilter, setSelectedFilter] = useState('전체');
 	const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -36,9 +39,23 @@ function Dashboard({ tasks, addTask }) {
 
     // 필터링 로직
     const filteredTasks = tasks.filter(task => {
-        if (selectedFilter === '완료') return task.completed;
-        if (selectedFilter === '전체') return !task.completed;
-        return !task.completed && task.category === selectedFilter;
+      if (selectedFilter === '완료') return task.completed;
+      if (selectedFilter === '전체') return !task.completed;
+      return !task.completed && task.category === selectedFilter;
+    });
+
+    // 🟢 [여기서부터 새로 추가!] 정렬 로직 
+    const sortedTasks = [...filteredTasks].sort((a, b) => {
+      if (sortOption === '급한순') {
+        const order = { '긴급': 1, '주의': 2, '일반': 3, '행사': 4, '휴가': 5 };
+        return (order[a.category] || 99) - (order[b.category] || 99);
+      }
+      if (sortOption === '날짜순') {
+        // 날짜(예: "2/25 15:00")를 시간값으로 변환해서 빠른 순서대로 정렬
+        const parse = (d) => d ? new Date(new Date().getFullYear() + "/" + d).getTime() : 9999999999999;
+        return parse(a.date) - parse(b.date);
+      }
+      return 0; // 기본순 (최신 등록순)
     });
 
     const filterOptions = [
@@ -147,8 +164,7 @@ function Dashboard({ tasks, addTask }) {
 				<textarea 
 					value={inputText}
 					onChange={(e) => setInputText(e.target.value)}
-					placeholder="고객사 메세지나 텍스트를 통째로 복사해서 붙여넣으세요.
-          행사나 휴가 등의 특별 스케줄은 '행사', '휴가' 등의 단어를 넣어주세요."
+					placeholder={`고객사 메세지나 텍스트를 통째로 복사해서 붙여넣으세요.\n\t행사나 휴가 등의 특별 스케줄은 '행사', '휴가' 등의 단어를 넣어주세요.`}
 					className="w-full h-24 p-5 bg-stone-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-300 outline-none resize-none text-stone-700 placeholder-stone-400"
 				/>
 				<div className="flex justify-end mt-3">
@@ -170,9 +186,19 @@ function Dashboard({ tasks, addTask }) {
         {/* 좌측: 태스크 목록 */}
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
-            <h3 className="font-bold text-lg text-stone-800">태스크 목록</h3>
-							
-							<div className="flex items-center gap-2">
+              <h3 className="font-bold text-lg text-stone-800">태스크 목록</h3>
+              
+              <div className="flex items-center gap-2">
+                {/* 🟢 [여기에 정렬 셀렉트 박스 추가!] */}
+                <select 
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 outline-none cursor-pointer hover:bg-stone-100"
+                >
+                  <option value="기본순">기본 정렬</option>
+                  <option value="급한순">🔥 급한순</option>
+                  <option value="날짜순">📅 날짜순</option>
+                </select>
 								{/* [추가된 부분 1] 삭제 실행 버튼 */}
 								{isDeleteMode && (
 									<button onClick={deleteSelectedTasks} className="text-xs text-red-500 font-bold underline cursor-pointer hover:text-red-600">
@@ -215,12 +241,10 @@ function Dashboard({ tasks, addTask }) {
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
 						<div className="flex flex-col gap-4">
-							{filteredTasks.map((task) => (
+							{sortedTasks.map((task) => (
 								<div 
 									key={task.id}
-									// 🟢 여기 수정: 삭제 모드일 때는 클릭해도 줄이 안 그어지게 막음
-									
-									className={`p-5 rounded-2xl flex items-center gap-4 transition-all cursor-pointer ${
+									className={`p-5 rounded-2xl flex items-center gap-4 transition-all ${
 										task.completed ? "bg-stone-50/50 opacity-60" : "bg-stone-50 hover:bg-stone-100 border-l-4 " + 
 										(task.color === 'red' ? 'border-red-400' : task.color === 'orange' ? 'border-orange-400' : task.color === 'green' ? 'border-green-400' : task.color === 'purple' ? 'border-purple-400' : 'border-stone-300')
 									}`}
@@ -285,24 +309,30 @@ function Dashboard({ tasks, addTask }) {
           {/* 위젯 2: 월별 요약 */}
           <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex-[1] flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-6 shrink-0">
-              <h3 className="font-bold text-lg text-stone-800">[{currentMonth}월] 요약</h3>
-              <div className="flex gap-1">
-                <button 
-                  onClick={() => changeMonth(2)} 
-                  className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === 2 ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
-                >
-                  &lt;
-                </button>
-                <button 
-                  onClick={() => changeMonth(3)} 
-                  className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === 3 ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
-                >
-                  &gt;
-                </button>
-              </div>
-            </div>
-            <div 
-              className="flex-1 overflow-y-auto pr-1"
+							<h3 className="font-bold text-lg text-stone-800">
+								{/* 🟢 동적으로 이번 달 / 다음 달 텍스트 출력 */}
+								[{currentMonth === thisMonthNum ? '이번 달' : '다음 달'}] 요약
+							</h3>
+							<div className="flex gap-1">
+								{/* 🟢 왼쪽 버튼은 '이번 달'로 고정 */}
+								<button 
+									onClick={() => changeMonth(thisMonthNum)} 
+									className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === thisMonthNum ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
+								>
+									&lt;
+								</button>
+								{/* 🟢 오른쪽 버튼은 '다음 달'로 고정 */}
+								<button 
+									onClick={() => changeMonth(nextMonthNum)} 
+									className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === nextMonthNum ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
+								>
+									&gt;
+								</button>
+							</div>
+						</div>
+						
+						<div 
+							className="flex-1 overflow-y-auto pr-1"
               style={{ transform: isFlipping ? 'rotateX(90deg)' : 'rotateX(0deg)', transition: 'transform 0.15s ease-in-out' }}
             >
               <div className="flex flex-col gap-4 text-sm font-medium text-stone-600 text-left">
