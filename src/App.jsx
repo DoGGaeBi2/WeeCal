@@ -51,6 +51,34 @@ function App() {
 
 		if (!error) setTasks(prev => [data[0], ...prev]);
 	};
+	
+	// App.jsx 내부 useEffect에 추가
+	const [notification, setNotification] = useState(null);
+
+	useEffect(() => {
+		const channel = supabase.channel('realtime-updates')
+			.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
+				setNotification({ type: 'task', message: `새로운 일정이 등록되었습니다: ${payload.new.title}` });
+				setTimeout(() => setNotification(null), 3000);
+			})
+			.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+				if (payload.new.receiver_id === session?.user.id) {
+					setNotification({ type: 'message', message: '새로운 메시지가 도착했습니다! ✉️' });
+					setTimeout(() => setNotification(null), 3000);
+				}
+			})
+			.subscribe();
+
+		return () => supabase.removeChannel(channel);
+	}, [session]);
+
+	// UI 렌더링 부분 (return 내부 최하단)
+	{notification && (
+		<div className={`fixed z-[9999] p-4 rounded-2xl shadow-2xl transition-all animate-bounce
+			${notification.type === 'task' ? 'top-10 left-1/2 -translate-x-1/2 bg-orange-500 text-white' : 'bottom-10 right-10 bg-white border-2 border-orange-400 text-stone-800'}`}>
+			<p className="font-bold text-sm">{notification.message}</p>
+		</div>
+	)}
 
 	// [추가] 앱이 켜질 때 로그인 상태 확인하기
 	useEffect(() => {

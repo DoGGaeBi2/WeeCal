@@ -1,0 +1,11 @@
+서버 켜는 명령어
+
+npm run dev
+
+------------------------------
+
+코드 수정 시 GitHub 업데이트 명령어
+
+git add .
+git commit -m "기능 추가 및 404 에러 수정"
+git push origin main

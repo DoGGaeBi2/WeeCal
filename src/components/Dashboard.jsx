@@ -126,6 +126,57 @@ function Dashboard() {
         setIsLoading(false);
       }
     };
+    // Dashboard.jsx 내부 로직 예시
+    const [isDeleteMode, setIsDeleteMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    // 🔵 복수 삭제 함수
+    const deleteSelectedTasks = async () => {
+      if (selectedIds.length === 0) return;
+      const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
+      if (!error) {
+        setTasks(prev => prev.filter(t => !selectedIds.includes(t.id)));
+        setSelectedIds([]);
+        setIsDeleteMode(false);
+      }
+    };
+
+    return (
+      <div>
+        {/* 필터 버튼 옆 삭제 버튼 추가 */}
+        <button 
+          onClick={() => setIsDeleteMode(!isDeleteMode)}
+          className={`px-3 py-1 rounded-lg text-xs font-bold ${isDeleteMode ? 'bg-red-500 text-white' : 'bg-stone-200'}`}
+        >
+          {isDeleteMode ? '취소' : '삭제하기'}
+        </button>
+        {isDeleteMode && <button onClick={deleteSelectedTasks} className="ml-2 text-xs text-red-500 font-bold underline">선택 삭제 실행</button>}
+
+        {/* 태스크 아이템 영역 */}
+        {tasks.map(task => (
+          <div key={task.id} className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm">
+            {isDeleteMode ? (
+              <input 
+                type="checkbox" 
+                onChange={(e) => {
+                  if(e.target.checked) setSelectedIds([...selectedIds, task.id]);
+                  else setSelectedIds(selectedIds.filter(id => id !== task.id));
+                }}
+              />
+            ) : (
+              <input 
+                type="checkbox" 
+                checked={task.completed}
+                // 🟢 정확히 체크박스를 눌러야만 업데이트 실행
+                onChange={() => handleToggle(task.id, !task.completed)} 
+                className="w-5 h-5 accent-orange-500 cursor-pointer"
+              />
+            )}
+            <span className={task.completed ? 'line-through text-stone-400' : ''}>{task.title}</span>
+          </div>
+        ))}
+      </div>
+    );
 
     // '자동 가공 및 등록' 버튼 클릭 시 실행되는 함수 예시
     const handleAutoRegister = (processedData) => {
