@@ -120,7 +120,11 @@ function App() {
 						<Route path="/milestone" element={<Milestone />} />
 						<Route path="/log" element={<Log />} />
 						<Route path="/archive" element={<Archive />} />
-            <Route path="/profile" element={<Profile />} /> {/* [추가] 프로필 경로 연결 */}
+           				{/* 🟢 수정: Profile에 필요한 모든 권한과 데이터를 넘겨줘! */}
+						<Route 
+							path="/profile" 
+							element={<Profile session={session} tasks={tasks} setTasks={setTasks} />} 
+						/>
 					</Routes>
 					
 				</main>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
-function Profile() {
+function Profile({ session, tasks, setTasks }) {
 	const navigate = useNavigate();
 	const [loading, setLoading] = useState(true);
 	const [username, setUsername] = useState('');
@@ -48,7 +48,14 @@ function Profile() {
 
 			let { error } = await supabase.from('profiles').upsert(updates);
 			if (error) throw error;
-			alert("프로필이 저장됐어! 새로 고침(F5)을 하면 왼쪽 멤버 리스트에서도 바뀔 거야.");
+
+			// 🟢 "F5 누르라"는 말은 이제 안녕!
+			alert("프로필 설정이 깔끔하게 저장됐어! ✨");
+
+			// 💡 만약 사이드바 닉네임까지 바로 바꾸고 싶다면, 
+			// 지금은 window.location.reload()를 자동으로 실행하게 하는 게 가장 빨라.
+			// 가을이가 직접 F5를 누를 필요 없이 코드가 대신 해주는 거지!
+			window.location.reload(); 
 		} catch (error) {
 			alert("업데이트 중 오류 발생: " + error.message);
 		}
