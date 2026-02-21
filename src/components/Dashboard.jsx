@@ -1,29 +1,19 @@
 import React, { useState } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // [추가] AI 패키지
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { supabase } from '../supabaseClient'; // 🟢 이거 한 줄 무조건 추가!
 
-function Dashboard() {
-    const [currentMonth, setCurrentMonth] = useState(2);
-    const [isFlipping, setIsFlipping] = useState(false);
-    const [selectedFilter, setSelectedFilter] = useState('전체');
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
-    // [추가] Gemini API 키 설정 (.env에서 가져옴)
-    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-
-    // [추가] 스마트 입력창 텍스트와 로딩 상태 관리
-    const [inputText, setInputText] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-
-    // 태스크 데이터 관리
-    // [수정할 부분] 기존 tasks 상태 데이터를 아래 코드로 교체
-    const [tasks, setTasks] = useState([
-      { id: 1, title: "감자를 고구마 시까지 예약 등록", category: "긴급", date: "2/25 15:00", dDay: "D-5 15:00까지", color: "red", completed: false, isWeekly: true },
-      { id: 2, title: "토마토랑 감자랑 고구마까지 해야 해요", category: "주의", date: "2/28 18:30", dDay: "D-8 18:30까지", color: "orange", completed: false, isMonthly: true },
-      { id: 3, title: "스마일게이트 부서 전체 타운홀 미팅", category: "행사", date: "2/24 10:00", dDay: "D-4 10:00까지", color: "green", completed: false, isMonthly: true },
-      { id: 4, title: "도담님 연차 (오후 반차)", category: "휴가", date: "2/27 14:00", dDay: "D-7 14:00까지", color: "purple", completed: false, isWeekly: true },
-      { id: 5, title: "신규 프로젝트 기획안 초안 작성", category: "일반", date: "3/20 23:59", dDay: "D-28 23:59까지", color: "stone", completed: false, isMonthly: true },
-      { id: 6, title: "지난주 고객사 미팅 자료 정리", category: "완료", date: "2/15 17:00", completed: true },
-      { id: 7, title: "사내 카페 쿠폰 일괄 지급 확인", category: "완료", date: "2/10 12:00", completed: true },
-    ]);
+function Dashboard({ tasks, addTask }) {
+	const [currentMonth, setCurrentMonth] = useState(2);
+	const [isFlipping, setIsFlipping] = useState(false);
+	const [selectedFilter, setSelectedFilter] = useState('전체');
+	const [isFilterOpen, setIsFilterOpen] = useState(false);
+	
+	const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+	const [inputText, setInputText] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+	
+	const [isDeleteMode, setIsDeleteMode] = useState(false);
+	const [selectedIds, setSelectedIds] = useState([]);
 
     // 달 변경 함수 (애니메이션 포함)
     const changeMonth = (targetMonth) => {
@@ -35,11 +25,13 @@ function Dashboard() {
         }, 150);
     };
 
-    // 체크박스 토글 함수
-    const toggleTask = (id) => {
-        setTasks(tasks.map(task => 
-          task.id === id ? { ...task, completed: !task.completed } : task
-        ));
+    // 체크박스 토글 함수 (DB 업데이트 후 새로고침)
+    const toggleTask = async (id) => {
+      const task = tasks.find(t => t.id === id);
+      if (task) {
+        await supabase.from('tasks').update({ completed: !task.completed }).eq('id', id);
+        window.location.reload();
+      }
     };
 
     // 필터링 로직
@@ -109,15 +101,9 @@ function Dashboard() {
         const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         const aiData = JSON.parse(cleanJson);
 
-        // 기존 태스크 배열 맨 앞에 새로 만든 일정 추가
-        const newTask = {
-          id: Date.now(), // 고유 아이디 생성
-          ...aiData,
-          completed: false
-        };
-
-        setTasks([newTask, ...tasks]);
-        setInputText(''); // 입력창 비우기
+        // App.jsx에서 받아온 진짜 추가 함수 사용
+      await addTask(aiData);
+      setInputText(''); // 입력창 비우기
         
       } catch (error) {
         console.error("AI API 에러:", error);
@@ -126,58 +112,17 @@ function Dashboard() {
         setIsLoading(false);
       }
     };
-    // Dashboard.jsx 내부 로직 예시
-    const [isDeleteMode, setIsDeleteMode] = useState(false);
-    const [selectedIds, setSelectedIds] = useState([]);
-
+    
     // 🔵 복수 삭제 함수
     const deleteSelectedTasks = async () => {
       if (selectedIds.length === 0) return;
       const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
       if (!error) {
-        setTasks(prev => prev.filter(t => !selectedIds.includes(t.id)));
-        setSelectedIds([]);
-        setIsDeleteMode(false);
+        window.location.reload(); // 삭제 완료 후 화면 새로고침
       }
     };
 
-    return (
-      <div>
-        {/* 필터 버튼 옆 삭제 버튼 추가 */}
-        <button 
-          onClick={() => setIsDeleteMode(!isDeleteMode)}
-          className={`px-3 py-1 rounded-lg text-xs font-bold ${isDeleteMode ? 'bg-red-500 text-white' : 'bg-stone-200'}`}
-        >
-          {isDeleteMode ? '취소' : '삭제하기'}
-        </button>
-        {isDeleteMode && <button onClick={deleteSelectedTasks} className="ml-2 text-xs text-red-500 font-bold underline">선택 삭제 실행</button>}
-
-        {/* 태스크 아이템 영역 */}
-        {tasks.map(task => (
-          <div key={task.id} className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm">
-            {isDeleteMode ? (
-              <input 
-                type="checkbox" 
-                onChange={(e) => {
-                  if(e.target.checked) setSelectedIds([...selectedIds, task.id]);
-                  else setSelectedIds(selectedIds.filter(id => id !== task.id));
-                }}
-              />
-            ) : (
-              <input 
-                type="checkbox" 
-                checked={task.completed}
-                // 🟢 정확히 체크박스를 눌러야만 업데이트 실행
-                onChange={() => handleToggle(task.id, !task.completed)} 
-                className="w-5 h-5 accent-orange-500 cursor-pointer"
-              />
-            )}
-            <span className={task.completed ? 'line-through text-stone-400' : ''}>{task.title}</span>
-          </div>
-        ))}
-      </div>
-    );
-
+    
     // '자동 가공 및 등록' 버튼 클릭 시 실행되는 함수 예시
     const handleAutoRegister = (processedData) => {
       // AI가 가공해준 데이터를 addTask에 쏙 넣어주기
@@ -221,6 +166,22 @@ function Dashboard() {
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
             <h3 className="font-bold text-lg text-stone-800">태스크 목록</h3>
+							
+							<div className="flex items-center gap-2">
+								{/* [추가된 부분 1] 삭제 실행 버튼 */}
+								{isDeleteMode && (
+									<button onClick={deleteSelectedTasks} className="text-xs text-red-500 font-bold underline cursor-pointer hover:text-red-600">
+										선택 삭제 실행
+									</button>
+								)}
+								
+								{/* [추가된 부분 2] 삭제 모드 켜기/끄기 버튼 */}
+								<button 
+									onClick={() => setIsDeleteMode(!isDeleteMode)}
+									className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${isDeleteMode ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100'}`}
+								>
+									{isDeleteMode ? '삭제 취소' : '선택 삭제'}
+								</button>
             <div className="relative">
               <button 
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -245,23 +206,39 @@ function Dashboard() {
               )}
             </div>
           </div>
+        </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="flex flex-col gap-4">
-              {filteredTasks.map((task) => (
-                <div 
-                  key={task.id}
-                  onClick={() => toggleTask(task.id)}
-                  className={`p-5 rounded-2xl flex items-center gap-4 transition-all cursor-pointer ${
-                    task.completed ? "bg-stone-50/50 opacity-60" : "bg-stone-50 hover:bg-stone-100 border-l-4 " + 
-                    (task.color === 'red' ? 'border-red-400' : task.color === 'orange' ? 'border-orange-400' : task.color === 'green' ? 'border-green-400' : task.color === 'purple' ? 'border-purple-400' : 'border-stone-300')
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                    task.completed ? "bg-orange-400 text-white text-[10px]" : "border-2 border-stone-300"
-                  }`}>
-                    {task.completed && "✓"}
-                  </div>
+						<div className="flex flex-col gap-4">
+							{filteredTasks.map((task) => (
+								<div 
+									key={task.id}
+									// 🟢 여기 수정: 삭제 모드일 때는 클릭해도 줄이 안 그어지게 막음
+									onClick={() => { if(!isDeleteMode) toggleTask(task.id) }} 
+									className={`p-5 rounded-2xl flex items-center gap-4 transition-all cursor-pointer ${
+										task.completed ? "bg-stone-50/50 opacity-60" : "bg-stone-50 hover:bg-stone-100 border-l-4 " + 
+										(task.color === 'red' ? 'border-red-400' : task.color === 'orange' ? 'border-orange-400' : task.color === 'green' ? 'border-green-400' : task.color === 'purple' ? 'border-purple-400' : 'border-stone-300')
+									}`}
+								>
+									
+									{/* 🟢 여기 수정: 삭제 모드면 다중 선택 체크박스를, 아니면 완료 체크박스를 보여줌 */}
+									{isDeleteMode ? (
+										<input 
+											type="checkbox" 
+											className="w-5 h-5 accent-red-500 cursor-pointer shrink-0"
+											onChange={(e) => {
+												e.stopPropagation(); // 클릭이 부모로 퍼지는 걸 막음
+												if(e.target.checked) setSelectedIds([...selectedIds, task.id]);
+												else setSelectedIds(selectedIds.filter(id => id !== task.id));
+											}}
+										/>
+									) : (
+										<div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+											task.completed ? "bg-orange-400 text-white text-[10px]" : "border-2 border-stone-300"
+										}`}>
+											{task.completed && "✓"}
+										</div>
+									)}
                   <div className="flex flex-col">
                     <span className={`font-medium ${task.completed ? "text-stone-500 line-through" : "text-stone-800"}`}>
                       {task.title}
@@ -333,10 +310,10 @@ function Dashboard() {
               </div>
             </div>
           </div>
-        </div> {/* 우측 컬럼 끝 */}
-      </div> {/* 메인 하단 영역 끝 */}
-    </div> 
-  );
+				</div> {/* 우측 컬럼 끝 */}
+			</div> {/* 메인 하단 영역 끝 */}
+		</div> 
+	);
 }
 
 export default Dashboard;
