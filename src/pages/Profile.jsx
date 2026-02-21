@@ -9,6 +9,11 @@ function Profile({ session, tasks, setTasks }) {
 	const [intro, setIntro] = useState('');
 	const [avatarUrl, setAvatarUrl] = useState('');
 
+	const avatarSeeds = [
+		'Oliver', 'Sophia', 'Lucas', 'Isabella', 'Mason', 
+		'Charlotte', 'Ethan', 'Amelia', 'James', 'Harper'
+	];
+
 	useEffect(() => {
 		getProfile();
 	}, []);
@@ -43,6 +48,7 @@ function Profile({ session, tasks, setTasks }) {
 				id: user.id,
 				username,
 				intro,
+				avatar_url: avatarUrl, // 🟢 추가: 선택한 아바타 URL 저장
 				updated_at: new Date(),
 			};
 
@@ -93,14 +99,43 @@ function Profile({ session, tasks, setTasks }) {
 				<h2 className="text-2xl font-bold mb-8 text-stone-800">내 프로필 설정</h2>
 				
 				<div className="flex flex-col gap-8">
-					{/* 프로필 이미지 섹션 */}
-					<div className="flex items-center gap-6">
-						<div className="w-24 h-24 rounded-full bg-orange-50 border-4 border-white shadow-md overflow-hidden flex items-center justify-center">
-							<img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+					{/* 🟢 아바타 선택 섹션 (10종 오리지널 스타일 적용) */}
+					<div className="flex flex-col gap-5 mt-2">
+						<div className="flex items-center justify-between px-1">
+							<p className="text-sm font-bold text-stone-400 font-sans">아바타 선택</p>
+							<span className="text-[10px] bg-orange-100 text-orange-500 px-2 py-1 rounded-lg font-bold">ORIGINAL STYLE</span>
 						</div>
-						<div className="flex flex-col gap-2">
-							<p className="text-sm font-bold text-stone-400">프로필 이미지</p>
-							<button className="text-orange-500 font-bold text-sm hover:underline cursor-pointer">사진 변경 (준비 중)</button>
+						
+						{/* 아바타 그리드: 5열 2줄 */}
+						<div className="grid grid-cols-5 gap-4 px-1">
+							{[
+								'Oliver', 'Sophia', 'Lucas', 'Isabella', 'Mason', 
+								'Charlotte', 'Ethan', 'Amelia', 'James', 'Harper'
+							].map((seed) => {
+								// 가을이가 좋아하는 오리지널 그림체 + 표정 고정
+								const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&eyes=default&mouth=smile&eyebrows=default`;
+								const isSelected = avatarUrl === url;
+
+								return (
+									<div key={seed} className="relative group flex justify-center">
+										<img 
+											src={url}
+											onClick={() => setAvatarUrl(url)}
+											className={`
+												w-16 h-16 rounded-full cursor-pointer transition-all bg-stone-50 border-2
+												${isSelected 
+													? 'border-orange-400 scale-110 shadow-lg z-10' 
+													: 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'}
+											`}
+										/>
+										{isSelected && (
+											<div className="absolute -bottom-1 bg-orange-400 text-white text-[8px] px-2 py-0.5 rounded-full font-bold shadow-sm z-20">
+												PICK
+											</div>
+										)}
+									</div>
+								);
+							})}
 						</div>
 					</div>
 
