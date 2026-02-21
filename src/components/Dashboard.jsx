@@ -206,7 +206,7 @@ function Dashboard({ tasks, addTask }) {
               )}
             </div>
           </div>
-        </div>
+       </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
 						<div className="flex flex-col gap-4">
@@ -233,9 +233,12 @@ function Dashboard({ tasks, addTask }) {
 											}}
 										/>
 									) : (
-										<div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-											task.completed ? "bg-orange-400 text-white text-[10px]" : "border-2 border-stone-300"
-										}`}>
+										<div 
+											onClick={() => toggleTask(task.id)}
+											className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+												task.completed ? "bg-orange-400 text-white text-[10px]" : "border-2 border-stone-300"
+											}`}
+										>
 											{task.completed && "✓"}
 										</div>
 									)}
