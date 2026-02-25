@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -9,6 +9,23 @@ function Calendar({ tasks = [] }) {
   // 🟢 팝업창(모달) 상태 관리
   const [selectedTask, setSelectedTask] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 🟢 ESC 키 누르면 모달창 닫기
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+
+    // 모달이 열려있을 때만 키보드 감지
+    if (isModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModalOpen]);
 
   // 🟢 1. 동적 상태 계산기 (완료 및 D-Day 실시간 자동 변경!)
   const getDynamicStatus = (task) => {
