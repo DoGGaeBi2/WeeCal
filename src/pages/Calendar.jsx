@@ -21,32 +21,35 @@ function Calendar({ tasks = [] }) {
     return colors[colorName] || '#a8a29e';
   };
 
+  // 🟢 1. 날짜 변환기 수정: 시간(23:59 등)은 달력 그릴 때 헷갈리니까 떼어내고 딱 날짜(YYYY-MM-DD)만 뽑아내기
   const formatCalendarDate = (dateString) => {
     if (!dateString) return null;
     try {
-        const [datePart, timePart] = dateString.split(' ');
+        const [datePart] = dateString.split(' '); // 띄어쓰기 기준으로 앞의 날짜(2/25)만 컷!
         const [month, day] = datePart.split('/');
         const year = new Date().getFullYear();
         const paddedMonth = month.padStart(2, '0');
         const paddedDay = day.padStart(2, '0');
-        const time = timePart ? `T${timePart}:00` : '';
-        return `${year}-${paddedMonth}-${paddedDay}${time}`;
+        return `${year}-${paddedMonth}-${paddedDay}`; // 뒤에 T18:00 같은 시간 부분을 아예 없앰
     } catch (e) {
         return null;
     }
   };
 
+  // 🟢 2. 이벤트 세팅 수정: 무조건 꽉 찬 박스로 강제 변환
   const calendarEvents = tasks
     .filter(task => showCompleted ? true : !task.completed)
     .map(task => ({
       id: task.id,
       title: task.title,
       start: task.start || formatCalendarDate(task.date),
-      end: task.end || formatCalendarDate(task.date),
+      // AI가 만들어준 단일 날짜는 end를 아예 비워서 무조건 하루만 차지하게 꽉 묶어둠!
+      end: task.end || undefined, 
       backgroundColor: getColorCode(task.color),
       borderColor: getColorCode(task.color),
       textColor: '#ffffff',
-      // 🟢 원본 task 데이터를 확장 정보로 캘린더에 몰래 숨겨둠
+      display: 'block', // 🚀 핵심 1: 점(Dot) 다 없애고 무조건 네모난 박스(Block)로 그려라!
+      allDay: true,     // 🚀 핵심 2: 시간 상관없이 무조건 하루 종일 꽉 채우는 일정으로 취급해라!
       extendedProps: { ...task } 
     }));
 
