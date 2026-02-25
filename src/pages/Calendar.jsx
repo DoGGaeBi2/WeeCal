@@ -10,48 +10,84 @@ function Calendar({ tasks = [] }) {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const getColorCode = (colorName) => {
-    const colors = {
-      red: '#f87171',    
-      orange: '#fb923c', 
-      green: '#4ade80',  
-      purple: '#c084fc', 
-      stone: '#a8a29e'   
-    };
-    return colors[colorName] || '#a8a29e';
-  };
+  // 🟢 1. 동적 상태 계산기 (완료 및 D-Day 실시간 자동 변경!)
+  const getDynamicStatus = (task) => {
+    // 1순위: 완료된 일정은 무조건 검은색 '완료'
+    if (task.completed) return { category: '완료', color: 'black' };
+    
+    // 2순위: 행사, 휴가는 날짜가 다가와도 성격이 안 변하니까 그대로 유지
+    if (task.category === '행사' || task.category === '휴가') {
+        return { category: task.category, color: task.color };
+    }
 
-  // 🟢 1. 날짜 변환기 수정: 시간(23:59 등)은 달력 그릴 때 헷갈리니까 떼어내고 딱 날짜(YYYY-MM-DD)만 뽑아내기
-  const formatCalendarDate = (dateString) => {
-    if (!dateString) return null;
+    // 3순위: 일반 업무들은 오늘 날짜를 기준으로 실시간 D-Day 계산
     try {
-        const [datePart] = dateString.split(' '); // 띄어쓰기 기준으로 앞의 날짜(2/25)만 컷!
-        const [month, day] = datePart.split('/');
-        const year = new Date().getFullYear();
-        const paddedMonth = month.padStart(2, '0');
-        const paddedDay = day.padStart(2, '0');
-        return `${year}-${paddedMonth}-${paddedDay}`; // 뒤에 T18:00 같은 시간 부분을 아예 없앰
+      const [datePart] = task.date.split(' ');
+      const [month, day] = datePart.split('/');
+      const targetDate = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // 시간은 날리고 딱 날짜만 비교
+      
+      const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 7) return { category: '긴급', color: 'red' };
+      if (diffDays < 14) return { category: '주의', color: 'orange' };
+      return { category: '일반', color: 'stone' };
     } catch (e) {
-        return null;
+      return { category: task.category, color: task.color };
     }
   };
 
-  // 🟢 2. 이벤트 세팅 수정: 무조건 꽉 찬 박스로 강제 변환
+  // 🟢 2. 색상 변환기에 black(완료용) 추가
+  const getColorCode = (colorName) => {
+    const colors = { red: '#f87171', orange: '#fb923c', green: '#4ade80', purple: '#c084fc', stone: '#a8a29e', black: '#1c1917' };
+    return colors[colorName] || '#a8a29e';
+  };
+
+  // 🟢 3. 등록일~마감일 쫙 뻗어나가게 만드는 날짜 마법사들
+  const getStartDate = (task) => {
+    // DB에 저장된 진짜 등록일(created_at)을 뽑아옴
+    return task.created_at ? task.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
+  };
+  
+  const getEndDate = (dateString) => {
+    if (!dateString) return undefined;
+    try {
+        const [datePart] = dateString.split(' ');
+        const [month, day] = datePart.split('/');
+        
+        // ★ FullCalendar는 종료일이 '미포함(Exclusive)'이라 무조건 하루를 더해줘야 그 날짜까지 꽉 참!
+        let dateObj = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day));
+        dateObj.setDate(dateObj.getDate() + 1);
+        
+        const finalMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const finalDay = String(dateObj.getDate()).padStart(2, '0');
+        return `${dateObj.getFullYear()}-${finalMonth}-${finalDay}`;
+    } catch (e) {
+        return undefined;
+    }
+  };
+
+  // 🟢 4. 달력에 그리기 (실시간 계산기 적용)
   const calendarEvents = tasks
     .filter(task => showCompleted ? true : !task.completed)
-    .map(task => ({
-      id: task.id, title: task.title,
-      start: task.start || formatCalendarDate(task.date),
-      end: task.end || undefined,
-      // 🟢 완료된 일정은 배경을 투명하게, 선과 글씨는 회색으로!
-      backgroundColor: task.completed ? 'transparent' : getColorCode(task.color),
-      borderColor: task.completed ? '#d6d3d1' : getColorCode(task.color),
-      textColor: task.completed ? '#a8a29e' : '#ffffff',
-      display: 'block', allDay: true,
-      extendedProps: { ...task },
-      // 🟢 여기에 마우스 손가락 포인터랑 호버 효과(opacity-80)를 딱!
-      classNames: ['cursor-pointer', 'transition-all', 'hover:opacity-80']
-    }));
+    .map(task => {
+      const status = getDynamicStatus(task); // 여기서 방금 만든 계산기가 돌아감!
+      return {
+        id: task.id, 
+        title: task.title,
+        start: getStartDate(task), // 등록일부터
+        end: getEndDate(task.date), // 마감일(+1일)까지 쫙 뻗기
+        
+        backgroundColor: task.completed ? 'transparent' : getColorCode(status.color),
+        borderColor: task.completed ? '#d6d3d1' : getColorCode(status.color),
+        textColor: task.completed ? '#a8a29e' : '#ffffff',
+        display: 'block', allDay: true,
+        // 나중에 모달창이 알 수 있게 바뀐 태그와 색깔을 챙겨서 보냄!
+        extendedProps: { ...task, dynamicCategory: status.category, dynamicColor: status.color }, 
+        classNames: ['cursor-pointer', 'transition-all', 'hover:opacity-80']
+      };
+    });
 
   // 🟢 일정을 클릭했을 때 실행되는 함수
   const handleEventClick = (clickInfo) => {
@@ -117,8 +153,11 @@ function Calendar({ tasks = [] }) {
             
             {/* 모달 헤더 (카테고리와 닫기 버튼) */}
             <div className="flex justify-between items-start">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold text-white bg-${selectedTask.color === 'stone' ? 'stone-400' : selectedTask.color + '-400'}`}>
-                {selectedTask.category}
+              <span className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
+                selectedTask.dynamicCategory === '완료' ? 'bg-stone-900' : 
+                (selectedTask.dynamicColor === 'stone' ? 'bg-stone-400' : `bg-${selectedTask.dynamicColor}-400`)
+              }`}>
+                {selectedTask.dynamicCategory}
               </span>
               <button 
                 onClick={() => setIsModalOpen(false)}
