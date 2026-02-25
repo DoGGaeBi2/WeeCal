@@ -67,6 +67,7 @@ function Sidebar() {
 	// [수정] 멤버 클릭 시 해당 유저의 알림 지우기
 	const handleMemberClick = (m) => {
 		setSelectedMember(m);
+		setSelectedTask(null);
 		setIsModalOpen(true);
 		
 		// 알림 목록에서 해당 유저 삭제
@@ -94,43 +95,30 @@ function Sidebar() {
 		initSidebar();
 	}, []);
 
-	// 🟢 채팅 메시지 실시간 구독 및 불러오기 (수정본)
-    useEffect(() => {
-        // 모달이 열려있고, (멤버를 누르든 태스크를 누르든) 대상이 있을 때만 실행!
-        if (isModalOpen && myId && (selectedMember || selectedTask)) {
-            fetchMessages();
+	// 채팅 메시지 실시간 구독 및 불러오기
+	useEffect(() => {
+		if (isModalOpen && myId && (selectedMember || selectedTask)) {
+			fetchMessages();
 
-            const channel = supabase
-                .channel('chat-room-updates') // 채널 이름 새로고침 효과를 위해 살짝 변경
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-                    const newMessage = payload.new;
-                    
-                    // 🚨 F12 콘솔창에서 확인하기 위한 로그!
-                    console.log("🔥 [실시간 감지] 새 메시지 도착!", newMessage);
+			// 실시간 구독 설정
+			const channel = supabase
+				.channel('schema-db-changes')
+				.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+					// 🟢 태스크 채팅이면 task_id 일치 확인, 멤버 채팅이면 sender/receiver 확인
+					const isMatch = selectedTask 
+						? newMessage.task_id === selectedTask.id
+						: (newMessage.sender_id === myId && newMessage.receiver_id === selectedMember?.id) ||
+						(newMessage.sender_id === selectedMember?.id && newMessage.receiver_id === myId);
 
-                    let isMatch = false;
+					if (isMatch) {
+						setChatMessages(prev => [...prev, newMessage]);
+					}
+				})
+				.subscribe();
 
-                    if (selectedTask) {
-                        // 🟢 태스크 채팅: 방금 온 메시지의 task_id가 현재 열려있는 태스크의 id와 같은지 확인
-                        isMatch = newMessage.task_id === selectedTask.id;
-                    } else if (selectedMember) {
-                        // ⚪ 1:1 채팅: 너와 나 사이의 대화인지 확인
-                        isMatch = (newMessage.sender_id === myId && newMessage.receiver_id === selectedMember.id) ||
-                                  (newMessage.sender_id === selectedMember.id && newMessage.receiver_id === myId);
-                    }
-
-                    console.log("👉 화면에 띄울까?:", isMatch); // 이게 true여야 화면에 보임!
-
-                    // 조건에 맞으면 내 화면 채팅창(chatMessages)에 즉시 추가!
-                    if (isMatch) {
-                        setChatMessages(prev => [...prev, newMessage]);
-                    }
-                })
-                .subscribe();
-
-            return () => supabase.removeChannel(channel);
-        }
-    }, [isModalOpen, selectedMember, selectedTask, myId]); // 🟢 selectedTask가 꼭 여기에 있어야 해!
+			return () => supabase.removeChannel(channel);
+		}
+	}, [isModalOpen, selectedMember, selectedTask, myId]);
 
 	async function fetchMessages() {
         let query = supabase.from('messages').select('*');
