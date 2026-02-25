@@ -239,49 +239,58 @@ function Sidebar() {
 						<div className="bg-stone-50 rounded-2xl h-64 overflow-hidden flex flex-col">
 							<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
 								{chatMessages.length > 0 ? chatMessages.map((msg, i) => {
-									// 날짜 구분선이 필요한지 체크 (이전 메시지와 날짜가 다를 때)
+									// 날짜 구분선 로직
 									const currentDate = formatMsgDate(msg.created_at);
 									const prevDate = i > 0 ? formatMsgDate(chatMessages[i - 1].created_at) : null;
 									const showDateLine = currentDate !== prevDate;
 
+									// 🟢 [핵심 추가] 메시지 보낸 사람의 정보 찾기 (팀원 목록에서 ID로 검색)
+									const sender = members.find(m => m.id === msg.sender_id);
+									const senderName = sender ? sender.username : '알 수 없음';
+									const senderAvatar = sender?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
+
 									return (
 										<React.Fragment key={msg.id || i}>
-											{/* 📅 날짜 구분선 */}
 											{showDateLine && (
-												<div className="flex justify-center my-4">
-													<span className="bg-stone-200/50 text-stone-500 text-[10px] px-3 py-1 rounded-full font-bold">
-														{currentDate}
-													</span>
-												</div>
+												<div className="flex justify-center my-4"><span className="bg-stone-200/50 text-stone-500 text-[10px] px-3 py-1 rounded-full font-bold">{currentDate}</span></div>
 											)}
+											
+											<div className={`flex flex-col ${msg.sender_id === myId ? 'items-end' : 'items-start'} mb-2`}>
+												
+												{/* 🟢 내 메시지일 때 (오른쪽 정렬, 기존과 동일) */}
+												{msg.sender_id === myId ? (
+													<div className="flex items-end gap-1.5 max-w-[85%]">
+														<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
+														<div className="bg-orange-400 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-md">
+															{msg.content}
+														</div>
+													</div>
+												) : (
+													/* 🟢 상대방 메시지일 때 (왼쪽 정렬, 프사 + 닉네임 추가!) */
+													<div className="flex items-start gap-2 max-w-[85%]">
+														{/* 프사 */}
+														<img src={senderAvatar} className="w-8 h-8 rounded-full bg-stone-100 shrink-0 mt-0.5" alt="profile" />
+														
+														<div className="flex flex-col gap-1">
+															{/* 닉네임 */}
+															<span className="text-[10px] font-bold text-stone-500 pl-1">{senderName}</span>
+															
+															{/* 말풍선과 시간 */}
+															<div className="flex items-end gap-1.5">
+																<div className="bg-white text-stone-700 p-3 rounded-2xl rounded-tl-none border border-stone-100 text-sm shadow-sm">
+																	{msg.content}
+																</div>
+																<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
+															</div>
+														</div>
+													</div>
+												)}
 
-											{/* 💬 메시지 말풍선 */}
-											<div className={`flex flex-col ${msg.sender_id === myId ? 'items-end' : 'items-start'}`}>
-												<div className="flex items-end gap-1.5 max-w-[85%]">
-													{/* 내 메시지일 때 (오른쪽 정렬) */}
-													{msg.sender_id === myId ? (
-														<>
-															<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
-															<div className="bg-orange-400 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-md">
-																{msg.content}
-															</div>
-														</>
-													) : (
-														/* 상대방 메시지일 때 (왼쪽 정렬) */
-														<>
-															<div className="bg-white text-stone-700 p-3 rounded-2xl rounded-tl-none border border-stone-100 text-sm shadow-sm">
-																{msg.content}
-															</div>
-															<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
-														</>
-													)}
-												</div>
 											</div>
 										</React.Fragment>
 									);
-								}) : (
-									<p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>
-								)}
+								}) : <p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>}
+
 							</div>
 							<form onSubmit={sendMessage} className="p-3 bg-white border-t border-stone-100 flex gap-2">
 								<input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="메시지 입력..." className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-300" />
