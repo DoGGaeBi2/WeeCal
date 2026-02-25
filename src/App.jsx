@@ -41,6 +41,7 @@ function App() {
 			.from('tasks')
 			.insert([{
 				title: newTask.title,
+				memo: newTask.memo || '',
 				category: newTask.category,
 				date: newTask.date,             // 🟢 추가: AI가 만든 날짜 전송
 				"dDay": newTask.dDay,           // 🟢 추가: AI가 만든 디데이 전송

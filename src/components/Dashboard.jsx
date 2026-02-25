@@ -61,6 +61,25 @@ function Dashboard({ tasks, addTask, setTasks }) {
       }
     };
 
+	// 🟢 개별 수정 함수 (버블에 마우스 올렸을 때 쓰는 용도)
+	const editSingleTask = async (task, e) => {
+		e.stopPropagation(); // 클릭이 뒤로 번지는 거 막기
+		const newTitle = window.prompt("일정 제목을 수정해 볼까?", task.title);
+		if (newTitle && newTitle !== task.title) {
+			await supabase.from('tasks').update({ title: newTitle }).eq('id', task.id);
+			setTasks(prev => prev.map(t => t.id === task.id ? { ...t, title: newTitle } : t));
+		}
+	};
+
+	// 🟢 개별 삭제 함수 (버블에 마우스 올렸을 때 쓰는 용도)
+	const deleteSingleTask = async (id, e) => {
+		e.stopPropagation();
+		if (window.confirm("이 일정을 싹 지워버릴까?")) {
+			await supabase.from('tasks').delete().eq('id', id);
+			setTasks(prev => prev.filter(t => t.id !== id));
+		}
+	};
+
     // 필터링 로직
     const filteredTasks = tasks.filter(task => {
       if (selectedFilter === '완료') return task.completed;
@@ -120,18 +139,19 @@ function Dashboard({ tasks, addTask, setTasks }) {
 				
 				[조건]
 				1. 반환 형식: 반드시 [{...}, {...}] 형태의 JSON 배열이어야 해. 일정이 하나라도 배열 [{...}] 형태로 줘.
-				2. title: 각 일정의 핵심 요약 내용
-				3. dDay: 오늘 날짜(${todayString})를 기준으로 며칠 남았는지 "D-X HH:mm까지" 형태
-				4. category & color: 문맥을 파악해서 아래 규칙을 유연하게 적용해.
+				2. title: 각 일정의 핵심 요약 (예: "R 초안 전달", "SNS 이벤트 당첨자 발표")
+				3. memo: 구체적인 작업 내용, 상세 조건, 메모 등 (예: "장기 미접속 게스트 계정 삭제 공지 진행, 2/25 EOB까지", "금일 DM을 통해 당첨자 안내 필요. 2월 4주차"). 없으면 빈 문자열("")
+				4. dDay: 오늘 날짜(${todayString})를 기준으로 며칠 남았는지 "D-X HH:mm까지" 형태
+				5. category & color: 문맥을 파악해서 아래 규칙을 유연하게 적용해.
 					- 회식, 워크샵, 타운홀, 축제, 세미나, 행사 등 다수가 참여하는 이벤트 성격이면: category: "행사", color: "green"
 					- 연차, 반차, 병가, 휴가 등 개인 휴무 성격이면: category: "휴가", color: "purple"
 					- 그 외의 업무나 마감일은 남은 기간(D-Day)을 기준으로 분류:
 						- 남은 기간이 7일 미만(D-0 ~ D-6): category: "긴급", color: "red"
 						- 남은 기간이 7일 이상 14일 미만(D-7 ~ D-13): category: "주의", color: "orange"
 						- 남은 기간이 14일 이상(D-14 부터): category: "일반", color: "stone"
-				5. date: "M/D HH:mm" 형태 (예: 2/22 15:00)
-				6. isWeekly: 남은 날짜가 7일 이내면 true, 아니면 false
-				7. isMonthly: true
+				6. date: "M/D HH:mm" 형태 (예: 2/22 15:00)
+				7. isWeekly: 남은 날짜가 7일 이내면 true, 아니면 false
+				8. isMonthly: true
 				
 				반드시 마크다운(\`\`\`json 등)을 포함하지 말고 순수 JSON 배열 [...] 형태만 출력해.
 				`;
@@ -259,8 +279,8 @@ function Dashboard({ tasks, addTask, setTasks }) {
 							{sortedTasks.map((task) => (
 								<div 
 									key={task.id}
-
-									className={`p-5 rounded-2xl flex items-center gap-4 transition-all duration-300 ${
+									// 🟢 relative와 group을 추가해서 숨김 버튼 띄울 준비!
+									className={`relative group p-5 rounded-2xl flex items-center gap-4 transition-all duration-300 ${
 										animatingIds.includes(task.id) ? "translate-x-10 opacity-0" : "translate-x-0 opacity-100"
 									} ${
 										task.completed ? "bg-stone-50/50 opacity-60" : "bg-stone-50 hover:bg-stone-100 border-l-4 " + 
@@ -268,13 +288,13 @@ function Dashboard({ tasks, addTask, setTasks }) {
 									}`}
 								>
 									
-									{/* 🟢 여기 수정: 삭제 모드면 다중 선택 체크박스를, 아니면 완료 체크박스를 보여줌 */}
+									{/* 체크박스 부분 */}
 									{isDeleteMode ? (
 										<input 
 											type="checkbox" 
 											className="w-5 h-5 accent-red-500 cursor-pointer shrink-0"
 											onChange={(e) => {
-												e.stopPropagation(); // 클릭이 부모로 퍼지는 걸 막음
+												e.stopPropagation();
 												if(e.target.checked) setSelectedIds([...selectedIds, task.id]);
 												else setSelectedIds(selectedIds.filter(id => id !== task.id));
 											}}
@@ -289,18 +309,36 @@ function Dashboard({ tasks, addTask, setTasks }) {
 											{task.completed && "✓"}
 										</div>
 									)}
-                  <div className="flex flex-col">
-                    <span className={`font-medium ${task.completed ? "text-stone-500 line-through" : "text-stone-800"}`}>
-                      {task.title}
-                    </span>
-                    {!task.completed && (
-											<span className="text-xs font-bold mt-1 text-stone-500">
+
+									{/* 🟢 텍스트 및 서브타이틀(메모) 영역 */}
+									<div className="flex flex-col flex-1 pr-16">
+										<span className={`font-medium ${task.completed ? "text-stone-500 line-through" : "text-stone-800"}`}>
+											{task.title}
+										</span>
+										
+										{/* 🟢 AI가 뽑아준 구체적인 내용이 메모로 들어감 */}
+										{task.memo && !task.completed && (
+											<span className="text-sm font-medium text-stone-500 mt-1 leading-snug break-keep">
+												{task.memo}
+											</span>
+										)}
+										
+										{!task.completed && (
+											<span className="text-xs font-bold mt-1 text-stone-400">
 												{task.category} 
 												{task.date && task.dDay ? ` | ${task.date} (${task.dDay})` : ''}
 											</span>
 										)}
 									</div>
-                </div>
+
+									{/* 🟢 숨겨져 있다가 마우스 올리면 나타나는 퀵 수정/삭제 버튼 */}
+									{!isDeleteMode && (
+										<div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-stone-50/90 p-1.5 rounded-xl shadow-sm border border-stone-200">
+											<button onClick={(e) => editSingleTask(task, e)} className="px-2 py-1 text-xs font-bold text-stone-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg cursor-pointer transition-colors">수정</button>
+											<button onClick={(e) => deleteSingleTask(task.id, e)} className="px-2 py-1 text-xs font-bold text-stone-500 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors">삭제</button>
+										</div>
+									)}
+								</div>
               ))}
             </div>
           </div>
