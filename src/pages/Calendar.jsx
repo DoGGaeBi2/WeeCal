@@ -40,17 +40,17 @@ function Calendar({ tasks = [] }) {
   const calendarEvents = tasks
     .filter(task => showCompleted ? true : !task.completed)
     .map(task => ({
-      id: task.id,
-      title: task.title,
+      id: task.id, title: task.title,
       start: task.start || formatCalendarDate(task.date),
-      // AI가 만들어준 단일 날짜는 end를 아예 비워서 무조건 하루만 차지하게 꽉 묶어둠!
-      end: task.end || undefined, 
-      backgroundColor: getColorCode(task.color),
-      borderColor: getColorCode(task.color),
-      textColor: '#ffffff',
-      display: 'block', // 🚀 핵심 1: 점(Dot) 다 없애고 무조건 네모난 박스(Block)로 그려라!
-      allDay: true,     // 🚀 핵심 2: 시간 상관없이 무조건 하루 종일 꽉 채우는 일정으로 취급해라!
-      extendedProps: { ...task } 
+      end: task.end || undefined,
+      // 🟢 완료된 일정은 배경을 투명하게, 선과 글씨는 회색으로!
+      backgroundColor: task.completed ? 'transparent' : getColorCode(task.color),
+      borderColor: task.completed ? '#d6d3d1' : getColorCode(task.color),
+      textColor: task.completed ? '#a8a29e' : '#ffffff',
+      display: 'block', allDay: true,
+      extendedProps: { ...task },
+      // 🟢 여기에 마우스 손가락 포인터랑 호버 효과(opacity-80)를 딱!
+      classNames: ['cursor-pointer', 'transition-all', 'hover:opacity-80']
     }));
 
   // 🟢 일정을 클릭했을 때 실행되는 함수
@@ -62,8 +62,13 @@ function Calendar({ tasks = [] }) {
 
   // 🟢 달력 안의 이벤트 모양을 커스텀 (무조건 말줄임표 ... 적용)
   const renderEventContent = (eventInfo) => {
+    // 🟢 이 일정이 완료된 일정인지 숨겨둔 데이터에서 꺼내오기
+    const isCompleted = eventInfo.event.extendedProps.completed;
     return (
-      <div className="w-full truncate px-1 text-xs font-medium" title={eventInfo.event.title}>
+      <div 
+        className={`w-full truncate px-1 text-xs font-medium ${isCompleted ? 'line-through text-stone-400' : ''}`} 
+        title={eventInfo.event.title}
+      >
         {eventInfo.event.title}
       </div>
     );
