@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useEscapeKey } from '../hooks/useEscapeKey'; // 🟢 경로 주의!
 
 function Sidebar() {
 	const [currentTime, setCurrentTime] = useState(new Date());
@@ -13,6 +14,8 @@ function Sidebar() {
 	const [chatInput, setChatInput] = useState('');
 	const [chatMessages, setChatMessages] = useState([]);
 	const scrollRef = useRef();
+
+	useEscapeKey(() => setIsModalOpen(false), isModalOpen);
 	
 	// [추가] 새로운 메시지가 온 유저들의 ID를 담을 세트 (중복 방지)
 	const [unreadUsers, setUnreadUsers] = useState(new Set());
