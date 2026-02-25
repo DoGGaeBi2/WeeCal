@@ -103,10 +103,13 @@ function Sidebar() {
 			const channel = supabase
 				.channel('schema-db-changes')
 				.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-					const newMessage = payload.new;
-					// 나 혹은 상대방과 관련된 메시지면 추가
-					if ((newMessage.sender_id === myId && newMessage.receiver_id === selectedMember.id) ||
-						(newMessage.sender_id === selectedMember.id && newMessage.receiver_id === myId)) {
+					// 🟢 태스크 채팅이면 task_id 일치 확인, 멤버 채팅이면 sender/receiver 확인
+					const isMatch = selectedTask 
+						? newMessage.task_id === selectedTask.id
+						: (newMessage.sender_id === myId && newMessage.receiver_id === selectedMember?.id) ||
+						(newMessage.sender_id === selectedMember?.id && newMessage.receiver_id === myId);
+
+					if (isMatch) {
 						setChatMessages(prev => [...prev, newMessage]);
 					}
 				})
@@ -208,15 +211,26 @@ function Sidebar() {
 			</aside>
 
 			{/* 멤버 상세 및 채팅 팝업 */}
-			{isModalOpen && selectedMember && (
+			{isModalOpen && (selectedMember || selectedTask) && (
 				<div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
 					<div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl flex flex-col gap-5">
 						<div className="flex items-center gap-4 border-b border-stone-100 pb-4">
-							<img src={selectedMember.avatar_url} className="w-16 h-16 rounded-full bg-orange-50" alt="profile" />
-							<div className="text-left">
-								<h4 className="text-lg font-bold text-stone-800">{selectedMember.username || '익명 멤버'}</h4>
-								<p className="text-xs text-stone-400">{selectedMember.intro}</p>
-							</div>
+							{/* 🟢 태스크 채팅일 때와 멤버 채팅일 때 헤더를 다르게 표시! */}
+							{selectedTask ? (
+								<div className="text-left">
+									<span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md mb-1 inline-block tracking-tighter">TASK CHAT</span>
+									<h4 className="text-lg font-bold text-stone-800 truncate">{selectedTask.title}</h4>
+									<p className="text-xs text-stone-400">이 태스크의 팀원들과 대화 중입니다.</p>
+								</div>
+							) : (
+								<>
+									<img src={selectedMember?.avatar_url} className="w-16 h-16 rounded-full bg-orange-50" alt="profile" />
+									<div className="text-left">
+										<h4 className="text-lg font-bold text-stone-800">{selectedMember?.username || '익명 멤버'}</h4>
+										<p className="text-xs text-stone-400">{selectedMember?.intro}</p>
+									</div>
+								</>
+							)}
 							<button onClick={() => setIsModalOpen(false)} className="ml-auto text-stone-300 hover:text-stone-500 cursor-pointer text-xl">✕</button>
 						</div>
 

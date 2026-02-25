@@ -315,7 +315,10 @@ function Dashboard({ tasks, addTask, setTasks }) {
 
 									{/* 🟢 텍스트 및 서브타이틀(메모) 영역 */}
 									<div className="flex flex-col flex-1 pr-16">
-										<span className={`font-medium ${task.completed ? "text-stone-500 line-through" : "text-stone-800"}`}>
+										<span 
+											onClick={() => window.openTaskChat(task)}
+											className={`font-medium cursor-pointer hover:text-orange-500 transition-colors ${task.completed ? "text-stone-500 line-through" : "text-stone-800"}`}
+										>
 											{task.title}
 										</span>
 										
