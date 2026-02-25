@@ -21,6 +21,23 @@ function Dashboard({ tasks, addTask, setTasks }) {
   // 🟢 여기에 스르륵 밀리는 애니메이션을 관리할 상태를 딱 하나 추가!
 	const [animatingIds, setAnimatingIds] = useState([]);
 
+	// 🟢 작업 로그를 DB에 쏴주는 스파이 함수
+    const recordLog = async (action, taskTitle) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        // 내 이름(username) 찾아오기
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+        const userName = profile?.username || '익명';
+
+        // 로그 테이블에 기록!
+        await supabase.from('task_logs').insert([{
+            user_name: userName,
+            action: action,
+            task_title: taskTitle
+        }]);
+    };
+
     // 달 변경 함수 (애니메이션 포함)
     const changeMonth = (targetMonth) => {
         if (currentMonth === targetMonth) return;
@@ -46,6 +63,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
       setTimeout(() => {
         setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
         setAnimatingIds(prev => prev.filter(animId => animId !== id));
+		recordLog(task.completed ? '미완료' : '완료', task.title);
       }, 300);
     };
 
@@ -57,6 +75,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
 		setTasks(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, is_deleted: true } : t)); 
 		setSelectedIds([]);
 		setIsDeleteMode(false);
+		recordLog('삭제', `${selectedIds.length}개의 일정`);
 	}
 	};
 
@@ -67,6 +86,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
 		if (newTitle && newTitle !== task.title) {
 			await supabase.from('tasks').update({ title: newTitle }).eq('id', task.id);
 			setTasks(prev => prev.map(t => t.id === task.id ? { ...t, title: newTitle } : t));
+			recordLog('수정', newTitle);
 		}
 	};
 
@@ -76,6 +96,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
 		if (window.confirm("이 일정을 휴지통으로 보낼까?")) {
 			await supabase.from('tasks').update({ is_deleted: true }).eq('id', id);
 			setTasks(prev => prev.map(t => t.id === id ? { ...t, is_deleted: true } : t));
+			recordLog('삭제', tasks.find(t => t.id === id)?.title);
 		}
 	};
 
