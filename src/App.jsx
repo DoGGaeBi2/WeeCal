@@ -117,7 +117,7 @@ function App() {
 					{/* 여기가 바로 주소에 따라 화면이 갈아끼워지는 곳! */}
 					<Routes>
 						<Route path="/" element={<Dashboard tasks={tasks} addTask={addTask} setTasks={setTasks} />} />
-						<Route path="/calendar" element={<Calendar />} />
+						<Route path="/calendar" element={<Calendar tasks={tasks} />} />
 						<Route path="/milestone" element={<Milestone />} />
 						<Route path="/log" element={<Log />} />
 						<Route path="/archive" element={<Archive />} />

@@ -3,19 +3,11 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
-function Calendar() {
+// 🟢 1. Dashboard처럼 App.jsx에서 진짜 데이터를 받아오도록 { tasks } 추가!
+function Calendar({ tasks = [] }) {
   const [showCompleted, setShowCompleted] = useState(false);
 
-  // 1. 기존 임시 데이터 (나중에 대시보드처럼 Supabase에서 가져오는 걸로 바꿀 거야!)
-  const tasks = [
-    { id: '1', title: "감자를 고구마 시까지 예약 등록", start: "2026-02-20", end: "2026-02-26", color: "red", completed: false },
-    { id: '2', title: "토마토랑 감자랑 고구마까지 해야 해요", start: "2026-02-14", end: "2026-03-01", color: "orange", completed: false },
-    { id: '3', title: "스마일게이트 부서 전체 타운홀 미팅", start: "2026-02-24", end: "2026-02-25", color: "green", completed: false },
-    { id: '4', title: "도담님 연차 (오후 반차)", start: "2026-02-27", end: "2026-02-28", color: "purple", completed: false },
-    { id: '5', title: "신규 프로젝트 기획안 초안 작성", start: "2026-03-10", end: "2026-03-21", color: "stone", completed: false },
-  ];
-
-  // 2. Tailwind 색상 이름을 FullCalendar가 이해할 수 있는 헥스(Hex) 코드로 변환
+  // 🟢 2. 색상 변환기 (그대로 유지)
   const getColorCode = (colorName) => {
     const colors = {
       red: '#f87171',    
@@ -27,14 +19,33 @@ function Calendar() {
     return colors[colorName] || '#a8a29e';
   };
 
-  // 3. FullCalendar 전용 이벤트 배열로 맵핑
+  // 🟢 3. 진짜 DB 데이터의 날짜 형식("2/25 15:00")을 캘린더가 이해하게 변환해 주는 마법사
+  const formatCalendarDate = (dateString) => {
+    if (!dateString) return null;
+    try {
+        const [datePart, timePart] = dateString.split(' ');
+        const [month, day] = datePart.split('/');
+        const year = new Date().getFullYear();
+        
+        const paddedMonth = month.padStart(2, '0');
+        const paddedDay = day.padStart(2, '0');
+        const time = timePart ? `T${timePart}:00` : '';
+        
+        return `${year}-${paddedMonth}-${paddedDay}${time}`;
+    } catch (e) {
+        return null;
+    }
+  };
+
+  // 🟢 4. 가짜 데이터 싹 지우고, 진짜 데이터(tasks)를 캘린더에 맞게 변환!
   const calendarEvents = tasks
     .filter(task => showCompleted ? true : !task.completed)
     .map(task => ({
       id: task.id,
       title: task.title,
-      start: task.start,
-      end: task.end,
+      // 데이터에 start/end가 있으면 쓰고, 없으면 방금 만든 마법사 함수로 date 변환해서 넣기
+      start: task.start || formatCalendarDate(task.date),
+      end: task.end || formatCalendarDate(task.date),
       backgroundColor: getColorCode(task.color),
       borderColor: getColorCode(task.color),
       textColor: '#ffffff'
@@ -43,7 +54,7 @@ function Calendar() {
   return (
     <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800">
       
-      {/* 커스텀 헤더 (완료 일정 보기 버튼) */}
+      {/* 커스텀 헤더 */}
       <div className="flex justify-between items-center mb-6 shrink-0">
         <h2 className="text-2xl font-bold hidden md:block">일정 캘린더</h2>
         <button 
@@ -56,20 +67,19 @@ function Calendar() {
         </button>
       </div>
 
-      {/* FullCalendar 본체 영역 */}
+      {/* 캘린더 본체 */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <FullCalendar
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
-          initialDate="2026-02-01" // 가을이 예전 코드에 맞춰서 일단 26년 2월로 고정!
-          events={calendarEvents}
+          events={calendarEvents} // 🟢 변환된 진짜 데이터를 쏙!
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,dayGridWeek'
           }}
           height="100%"
-          dayMaxEvents={true} // 일정이 많아지면 '+2 more' 식으로 깔끔하게 묶어줌
+          dayMaxEvents={true}
           buttonText={{
             today: '오늘',
             month: '월간',
