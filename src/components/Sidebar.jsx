@@ -43,26 +43,38 @@ function Sidebar() {
 	// [추가] 새로운 메시지가 온 유저들의 ID를 담을 세트 (중복 방지)
 	const [unreadUsers, setUnreadUsers] = useState(new Set());
 
-	// [추가] 실시간 메시지 감지 (사이드바용)
-	useEffect(() => {
-		if (!myId) return;
+	// 🟢 채팅 메시지 실시간 구독 및 불러오기 (수정본)
+    useEffect(() => {
+        if (isModalOpen && myId && (selectedMember || selectedTask)) {
+            fetchMessages();
 
-		const channel = supabase
-			.channel('sidebar-notifications')
-			.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-				const newMessage = payload.new;
-				
-				// 나에게 온 메시지이고, 현재 그 사람과의 채팅창이 닫혀있을 때만 알림 표시
-				if (newMessage.receiver_id === myId) {
-					if (!isModalOpen || (selectedMember && selectedMember.id !== newMessage.sender_id)) {
-						setUnreadUsers(prev => new Set(prev).add(newMessage.sender_id));
-					}
-				}
-			})
-			.subscribe();
+            const channel = supabase
+                .channel('chat-room-updates')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+                    // 🟢 바로 이 줄! 여기서 newMessage를 정의해 주니까 이제 에러 안 나!
+                    const newMessage = payload.new;
+                    
+                    // F12 콘솔창에서 확인하기 위한 로그
+                    console.log("🔥 [실시간 감지] 새 메시지 도착!", newMessage);
 
-		return () => supabase.removeChannel(channel);
-	}, [myId, isModalOpen, selectedMember]);
+                    let isMatch = false;
+
+                    if (selectedTask) {
+                        isMatch = newMessage.task_id === selectedTask.id;
+                    } else if (selectedMember) {
+                        isMatch = (newMessage.sender_id === myId && newMessage.receiver_id === selectedMember.id) ||
+                                  (newMessage.sender_id === selectedMember.id && newMessage.receiver_id === myId);
+                    }
+
+                    if (isMatch) {
+                        setChatMessages(prev => [...prev, newMessage]);
+                    }
+                })
+                .subscribe();
+
+            return () => supabase.removeChannel(channel);
+        }
+    }, [isModalOpen, selectedMember, selectedTask, myId]);
 
 	// [수정] 멤버 클릭 시 해당 유저의 알림 지우기
 	const handleMemberClick = (m) => {
