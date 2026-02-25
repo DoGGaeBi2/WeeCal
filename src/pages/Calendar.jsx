@@ -148,7 +148,7 @@ function Calendar({ tasks = [] }) {
 
       {/* 🟢 팝업창 (모달) 영역 */}
       {isModalOpen && selectedTask && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-stone-900/40 rounded-[2rem] p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-stone-900/40 p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
             
             {/* 모달 헤더 (카테고리와 닫기 버튼) */}
