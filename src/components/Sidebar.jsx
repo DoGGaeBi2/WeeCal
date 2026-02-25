@@ -9,6 +9,7 @@ function Sidebar() {
 	const [myId, setMyId] = useState(null); // 내 아이디 저장
 	
 	const [selectedMember, setSelectedMember] = useState(null);
+	const [selectedTask, setSelectedTask] = useState(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	
 	const [chatInput, setChatInput] = useState('');
