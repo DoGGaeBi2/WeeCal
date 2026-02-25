@@ -13,6 +13,8 @@ import Milestone from './pages/Milestone';
 import Auth from './pages/Auth'; // [추가] 로그인 페이지
 import Profile from './pages/Profile'; // [추가] 프로필 페이지 불러오기
 
+import Trash from './Trash'; // [추가] 휴지통 페이지 불러오기
+
 function App() {
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
 	const [session, setSession] = useState(null);
