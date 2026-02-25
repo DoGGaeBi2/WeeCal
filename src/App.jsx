@@ -120,7 +120,7 @@ function App() {
 						<Route path="/calendar" element={<Calendar tasks={tasks} />} />
 						<Route path="/milestone" element={<Milestone />} />
 						<Route path="/log" element={<Log />} />
-						<Route path="/archive" element={<Archive />} />
+						<Route path="/trash" element={<Trash tasks={tasks} setTasks={setTasks} />} />
            				{/* 🟢 수정: Profile에 필요한 모든 권한과 데이터를 넘겨줘! */}
 						<Route 
 							path="/profile" 

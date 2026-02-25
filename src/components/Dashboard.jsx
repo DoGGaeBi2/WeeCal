@@ -49,17 +49,16 @@ function Dashboard({ tasks, addTask, setTasks }) {
       }, 300);
     };
 
-    // 🟢 복수 삭제 함수 (삭제 즉시 화면에서 바로 사라지게 수정)
-    const deleteSelectedTasks = async () => {
-      if (selectedIds.length === 0) return;
-      const { error } = await supabase.from('tasks').delete().in('id', selectedIds);
-      if (!error) {
-        // (수정됨: prev 사용해서 화면 딜레이 없이 즉각 삭제 반영)
-        setTasks(prev => prev.filter(t => !selectedIds.includes(t.id))); 
-        setSelectedIds([]);
-        setIsDeleteMode(false);
-      }
-    };
+    // 🟢 복수 삭제 함수 (가짜 삭제)
+	const deleteSelectedTasks = async () => {
+	if (selectedIds.length === 0) return;
+	const { error } = await supabase.from('tasks').update({ is_deleted: true }).in('id', selectedIds);
+	if (!error) {
+		setTasks(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, is_deleted: true } : t)); 
+		setSelectedIds([]);
+		setIsDeleteMode(false);
+	}
+	};
 
 	// 🟢 개별 수정 함수 (버블에 마우스 올렸을 때 쓰는 용도)
 	const editSingleTask = async (task, e) => {
@@ -71,21 +70,21 @@ function Dashboard({ tasks, addTask, setTasks }) {
 		}
 	};
 
-	// 🟢 개별 삭제 함수 (버블에 마우스 올렸을 때 쓰는 용도)
+	// 🟢 개별 삭제 함수 (가짜 삭제)
 	const deleteSingleTask = async (id, e) => {
 		e.stopPropagation();
-		if (window.confirm("이 일정을 싹 지워버릴까?")) {
-			await supabase.from('tasks').delete().eq('id', id);
-			setTasks(prev => prev.filter(t => t.id !== id));
+		if (window.confirm("이 일정을 휴지통으로 보낼까?")) {
+			await supabase.from('tasks').update({ is_deleted: true }).eq('id', id);
+			setTasks(prev => prev.map(t => t.id === id ? { ...t, is_deleted: true } : t));
 		}
 	};
 
-    // 필터링 로직
-    const filteredTasks = tasks.filter(task => {
-      if (selectedFilter === '완료') return task.completed;
-      if (selectedFilter === '전체') return !task.completed;
-      return !task.completed && task.category === selectedFilter;
-    });
+    // 🟢 필터링 로직 (휴지통 간 건 안 보이게 !task.is_deleted 추가!)
+	const filteredTasks = tasks.filter(task => !task.is_deleted).filter(task => {
+	if (selectedFilter === '완료') return task.completed;
+	if (selectedFilter === '전체') return !task.completed;
+	return !task.completed && task.category === selectedFilter;
+	});
 
     // 🟢 [여기서부터 새로 추가!] 정렬 로직 
     const sortedTasks = [...filteredTasks].sort((a, b) => {
@@ -358,7 +357,8 @@ function Dashboard({ tasks, addTask, setTasks }) {
             <h3 className="font-bold text-lg mb-6 text-stone-800 shrink-0">이번 주 일정 요약</h3>
             <div className="flex-1 overflow-y-auto pr-1">
               <div className="flex flex-col gap-4 text-sm font-medium text-stone-600">
-                {tasks.filter(t => t.isWeekly && !t.completed).map(task => (
+                {/* 🟢 1. 여기에 && !t.is_deleted 추가! */}
+                {tasks.filter(t => t.isWeekly && !t.completed && !t.is_deleted).map(task => (
                   <div key={task.id} className="flex items-start gap-3 text-left">
                     <span className={`w-3 h-3 mt-1.5 rounded-full shrink-0 bg-${task.color === 'stone' ? 'stone-300' : task.color + '-400'}`}></span>
                     <p><span className="font-bold text-stone-800">{task.date}</span><br />{task.title}</p>
@@ -371,35 +371,36 @@ function Dashboard({ tasks, addTask, setTasks }) {
           {/* 위젯 2: 월별 요약 */}
           <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex-[1] flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-6 shrink-0">
-							<h3 className="font-bold text-lg text-stone-800">
-								{/* 🟢 동적으로 이번 달 / 다음 달 텍스트 출력 */}
-								[{currentMonth === thisMonthNum ? '이번 달' : '다음 달'}] 요약
-							</h3>
-							<div className="flex gap-1">
-								{/* 🟢 왼쪽 버튼은 '이번 달'로 고정 */}
-								<button 
-									onClick={() => changeMonth(thisMonthNum)} 
-									className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === thisMonthNum ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
-								>
-									&lt;
-								</button>
-								{/* 🟢 오른쪽 버튼은 '다음 달'로 고정 */}
-								<button 
-									onClick={() => changeMonth(nextMonthNum)} 
-									className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === nextMonthNum ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
-								>
-									&gt;
-								</button>
-							</div>
-						</div>
-						
-						<div 
-							className="flex-1 overflow-y-auto pr-1"
+                            <h3 className="font-bold text-lg text-stone-800">
+                                {/* 🟢 동적으로 이번 달 / 다음 달 텍스트 출력 */}
+                                [{currentMonth === thisMonthNum ? '이번 달' : '다음 달'}] 요약
+                            </h3>
+                            <div className="flex gap-1">
+                                {/* 🟢 왼쪽 버튼은 '이번 달'로 고정 */}
+                                <button 
+                                    onClick={() => changeMonth(thisMonthNum)} 
+                                    className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === thisMonthNum ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
+                                >
+                                    &lt;
+                                </button>
+                                {/* 🟢 오른쪽 버튼은 '다음 달'로 고정 */}
+                                <button 
+                                    onClick={() => changeMonth(nextMonthNum)} 
+                                    className={`w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer ${currentMonth === nextMonthNum ? 'bg-orange-100 text-orange-500' : 'bg-stone-50 text-stone-400'}`}
+                                >
+                                    &gt;
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div 
+                            className="flex-1 overflow-y-auto pr-1"
               style={{ transform: isFlipping ? 'rotateX(90deg)' : 'rotateX(0deg)', transition: 'transform 0.15s ease-in-out' }}
             >
               <div className="flex flex-col gap-4 text-sm font-medium text-stone-600 text-left">
+                {/* 🟢 2. 여기에도 && !t.is_deleted 추가! */}
                 {tasks
-                  .filter(t => t.isMonthly && !t.completed && parseInt(t.date.split('/')[0]) === currentMonth)
+                  .filter(t => t.isMonthly && !t.completed && !t.is_deleted && parseInt(t.date.split('/')[0]) === currentMonth)
                   .map(task => (
                     <div key={task.id} className="flex items-start gap-3">
                       <span className={`w-3 h-3 mt-1.5 rounded-full shrink-0 bg-${task.color === 'stone' ? 'stone-300' : task.color + '-400'}`}></span>
@@ -410,6 +411,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
               </div>
             </div>
           </div>
+
 				</div> {/* 우측 컬럼 끝 */}
 			</div> {/* 메인 하단 영역 끝 */}
 		</div> 

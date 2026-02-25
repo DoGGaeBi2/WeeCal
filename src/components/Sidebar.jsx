@@ -186,7 +186,7 @@ function Sidebar() {
 					<NavLink to="/calendar" className={navStyle}>캘린더</NavLink>
 					<NavLink to="/milestone" className={navStyle}>마일스톤</NavLink>
 					<NavLink to="/log" className={navStyle}>작업 로그</NavLink>
-					<NavLink to="/archive" className={navStyle}>보관함</NavLink>
+					<NavLink to="/trash" className={navStyle}>휴지통</NavLink>
 				</nav>
 
 				<div className="mt-auto pt-6 border-t border-stone-100 flex flex-col min-h-0 text-left">
