@@ -13,6 +13,16 @@ function Sidebar() {
 	
 	const [chatInput, setChatInput] = useState('');
 	const [chatMessages, setChatMessages] = useState([]);
+
+	// 🟢 외부에서 "태스크 채팅 열어줘!"라고 호출할 때 쓰는 함수
+    useEffect(() => {
+        window.openTaskChat = (task) => {
+            setSelectedTask(task);
+            setSelectedMember(null); // 1:1 모드 해제
+            setIsModalOpen(true);
+        };
+    }, []);
+
 	const scrollRef = useRef();
 
     // 🟢 [추가] 날짜와 시간을 카톡 스타일로 변환하는 마법사들
@@ -85,7 +95,7 @@ function Sidebar() {
 
 	// 채팅 메시지 실시간 구독 및 불러오기
 	useEffect(() => {
-		if (isModalOpen && selectedMember && myId) {
+		if (isModalOpen && myId && (selectedMember || selectedTask)) {
 			fetchMessages();
 
 			// 실시간 구독 설정
@@ -103,29 +113,36 @@ function Sidebar() {
 
 			return () => supabase.removeChannel(channel);
 		}
-	}, [isModalOpen, selectedMember, myId]);
+	}, [isModalOpen, selectedMember, selectedTask, myId]);
 
-	// 이전 대화 내역 가져오기
 	async function fetchMessages() {
-		const { data } = await supabase
-			.from('messages')
-			.select('*')
-			.or(`and(sender_id.eq.${myId},receiver_id.eq.${selectedMember.id}),and(sender_id.eq.${selectedMember.id},receiver_id.eq.${myId})`)
-			.order('created_at', { ascending: true });
-		if (data) setChatMessages(data);
-	}
+        let query = supabase.from('messages').select('*');
+
+        if (selectedTask) {
+            // 🟢 태스크 채팅일 때
+            query = query.eq('task_id', selectedTask.id);
+        } else if (selectedMember) {
+            // ⚪ 기존 1:1 채팅
+            query = query.or(`and(sender_id.eq.${myId},receiver_id.eq.${selectedMember.id}),and(sender_id.eq.${selectedMember.id},receiver_id.eq.${myId})`);
+        }
+
+        const { data } = await query.order('created_at', { ascending: true });
+        if (data) setChatMessages(data);
+    }
 
 	// 메시지 전송
 	async function sendMessage(e) {
-		e.preventDefault();
-		if (!chatInput.trim()) return;
+        e.preventDefault();
+        if (!chatInput.trim()) return;
 
-		const { error } = await supabase.from('messages').insert([
-			{ sender_id: myId, receiver_id: selectedMember.id, content: chatInput }
-		]);
+        // 🟢 태스크 채팅이면 task_id를, 아니면 receiver_id를 넣음
+        const msgData = selectedTask 
+            ? { sender_id: myId, task_id: selectedTask.id, content: chatInput }
+            : { sender_id: myId, receiver_id: selectedMember.id, content: chatInput };
 
-		if (!error) setChatInput('');
-	}
+        const { error } = await supabase.from('messages').insert([msgData]);
+        if (!error) setChatInput('');
+    }
 
 	// 채팅 스크롤 하단 유지
 	useEffect(() => {
