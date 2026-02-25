@@ -15,7 +15,19 @@ function Sidebar() {
 	const [chatMessages, setChatMessages] = useState([]);
 	const scrollRef = useRef();
 
-	useEscapeKey(() => setIsModalOpen(false), isModalOpen);
+    // 🟢 [추가] 날짜와 시간을 카톡 스타일로 변환하는 마법사들
+    const formatMsgDate = (dateStr) => {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    };
+
+    const formatMsgTime = (dateStr) => {
+        const d = new Date(dateStr);
+        return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+
+    // 🟢 [교체] 길었던 useEffect 대신 커스텀 훅 한 줄로!
+    useEscapeKey(() => setIsModalOpen(false), isModalOpen);
 	
 	// [추가] 새로운 메시지가 온 유저들의 ID를 담을 세트 (중복 방지)
 	const [unreadUsers, setUnreadUsers] = useState(new Set());
@@ -192,12 +204,49 @@ function Sidebar() {
 
 						{/* 채팅창 영역 */}
 						<div className="bg-stone-50 rounded-2xl h-64 overflow-hidden flex flex-col">
-							<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 custom-scrollbar">
-								{chatMessages.length > 0 ? chatMessages.map((msg, i) => (
-									<div key={i} className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.sender_id === myId ? 'bg-orange-400 text-white self-end rounded-tr-none' : 'bg-white text-stone-700 self-start rounded-tl-none border border-stone-100'}`}>
-										{msg.content}
-									</div>
-								)) : (
+							<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+								{chatMessages.length > 0 ? chatMessages.map((msg, i) => {
+									// 날짜 구분선이 필요한지 체크 (이전 메시지와 날짜가 다를 때)
+									const currentDate = formatMsgDate(msg.created_at);
+									const prevDate = i > 0 ? formatMsgDate(chatMessages[i - 1].created_at) : null;
+									const showDateLine = currentDate !== prevDate;
+
+									return (
+										<React.Fragment key={msg.id || i}>
+											{/* 📅 날짜 구분선 */}
+											{showDateLine && (
+												<div className="flex justify-center my-4">
+													<span className="bg-stone-200/50 text-stone-500 text-[10px] px-3 py-1 rounded-full font-bold">
+														{currentDate}
+													</span>
+												</div>
+											)}
+
+											{/* 💬 메시지 말풍선 */}
+											<div className={`flex flex-col ${msg.sender_id === myId ? 'items-end' : 'items-start'}`}>
+												<div className="flex items-end gap-1.5 max-w-[85%]">
+													{/* 내 메시지일 때 (오른쪽 정렬) */}
+													{msg.sender_id === myId ? (
+														<>
+															<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
+															<div className="bg-orange-400 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-md">
+																{msg.content}
+															</div>
+														</>
+													) : (
+														/* 상대방 메시지일 때 (왼쪽 정렬) */
+														<>
+															<div className="bg-white text-stone-700 p-3 rounded-2xl rounded-tl-none border border-stone-100 text-sm shadow-sm">
+																{msg.content}
+															</div>
+															<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
+														</>
+													)}
+												</div>
+											</div>
+										</React.Fragment>
+									);
+								}) : (
 									<p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>
 								)}
 							</div>
