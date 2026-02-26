@@ -48,21 +48,30 @@ function Calendar({ tasks = [] }) {
     return colors[colorName] || '#a8a29e';
   };
 
-  // 🟢 3. 등록일~마감일 쫙 뻗어나가게 만드는 날짜 마법사들
+  // 🟢 3. 날짜 마법사 (수정: 행사/휴가는 하루만 나오게!)
   const getStartDate = (task) => {
-    // DB에 저장된 진짜 등록일(created_at)을 뽑아옴
+    // 행사나 휴가는 시작일도 무조건 마감일(date)이랑 똑같이 맞춰서 하루만 나오게 세팅
+    if (task.category === '행사' || task.category === '휴가') {
+        if (!task.date) return undefined;
+        const [datePart] = task.date.split(' ');
+        const [month, day] = datePart.split('/');
+        const finalMonth = String(parseInt(month)).padStart(2, '0');
+        const finalDay = String(parseInt(day)).padStart(2, '0');
+        return `${new Date().getFullYear()}-${finalMonth}-${finalDay}`;
+    }
+    // 일반 업무는 기존대로 등록일(created_at)부터 시작
     return task.created_at ? task.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
   };
   
-  const getEndDate = (dateString) => {
-    if (!dateString) return undefined;
+  const getEndDate = (task) => {
+    if (!task.date) return undefined;
     try {
-        const [datePart] = dateString.split(' ');
+        const [datePart] = task.date.split(' ');
         const [month, day] = datePart.split('/');
         
-        // ★ FullCalendar는 종료일이 '미포함(Exclusive)'이라 무조건 하루를 더해줘야 그 날짜까지 꽉 참!
         let dateObj = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day));
-        dateObj.setDate(dateObj.getDate() + 1);
+        // ★ FullCalendar 종료일 규칙: +1일 해줘야 그 날까지 꽉 참!
+        dateObj.setDate(dateObj.getDate() + 1); 
         
         const finalMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
         const finalDay = String(dateObj.getDate()).padStart(2, '0');
@@ -81,7 +90,7 @@ function Calendar({ tasks = [] }) {
         id: task.id, 
         title: task.title,
         start: getStartDate(task), // 등록일부터
-        end: getEndDate(task.date), // 마감일(+1일)까지 쫙 뻗기
+        end: getEndDate(task), // 마감일(+1일)까지 쫙 뻗기
         
         backgroundColor: task.completed ? 'transparent' : getColorCode(status.color),
         borderColor: task.completed ? '#d6d3d1' : getColorCode(status.color),
@@ -147,6 +156,14 @@ function Calendar({ tasks = [] }) {
           displayEventTime={false} // 보기 싫은 6p, 12p 시간 숨기기
           eventClick={handleEventClick} // 클릭 시 모달 띄우기 연결
           eventContent={renderEventContent} // 말줄임표 커스텀 렌더링 연결
+          // 🟢 주말 빨간색 처리 마법의 코드 추가!
+          dayCellClassNames={(arg) => {
+            // arg.date.getDay() -> 0은 일요일, 6은 토요일
+            if (arg.date.getDay() === 0 || arg.date.getDay() === 6) {
+              return ['text-red-500', 'font-bold']; // 꼬리표(클래스)를 달아줘서 빨갛게 만듦!
+            }
+            return [];
+          }}
         />
       </div>
 
