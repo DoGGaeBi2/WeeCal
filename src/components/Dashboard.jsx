@@ -291,9 +291,21 @@ function Dashboard({ tasks, addTask, setTasks }) {
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
 						{/* 🟢 아까 넣은 토글 지우고, 현재 모드에 따라 바뀌는 제목으로 복구! */}
-						<h3 className="font-bold text-lg text-stone-800">
-							{viewMode === 'task' ? '태스크 목록' : '마일스톤 목록'}
-						</h3>
+						<div className="flex items-center gap-2">
+							<h3 className="font-bold text-lg text-stone-800">
+								{viewMode === 'task' ? '태스크 목록' : '마일스톤 목록'}
+							</h3>
+							<button 
+								onClick={() => handleViewModeChange(viewMode === 'task' ? 'milestone' : 'task')}
+								title="목록 뷰 전환"
+								className="p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm text-stone-400 hover:text-orange-500 hover:bg-orange-50 hover:border-orange-200 transition-all cursor-pointer"
+							>
+								{/* 스위치(🔄) 모양의 깔끔한 SVG 아이콘 */}
+								<svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+									<path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+								</svg>
+							</button>
+						</div>
 									
 						<div className="flex items-center gap-2">
 
