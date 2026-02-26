@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 
-function Calendar({ tasks = [] }) {
+function Calendar({ tasks = [], title = "일정 캘린더" }) { // 👈 여기 title 추가
   const [showCompleted, setShowCompleted] = useState(false);
   
   // 🟢 팝업창(모달) 상태 관리
@@ -127,7 +127,7 @@ function Calendar({ tasks = [] }) {
     <div className="relative flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800">
       
       <div className="flex justify-between items-center mb-6 shrink-0">
-        <h2 className="text-2xl font-bold hidden md:block">일정 캘린더</h2>
+        <h2 className="text-2xl font-bold hidden md:block">{title}</h2> {/* 👈 여기 title 적용 */}
         <button 
           onClick={() => setShowCompleted(!showCompleted)}
           className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ml-auto ${
