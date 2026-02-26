@@ -454,7 +454,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
           
           {/* 위젯 1: 이번 주 일정 */}
           <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex-[1] flex flex-col min-h-0">
-            <h3 className="font-bold text-lg mb-6 text-stone-800 shrink-0">이번 주 일정 요약</h3>
+            <h3 className="font-bold text-lg mb-6 text-stone-800 shrink-0">이번 주 요약</h3>
             <div className="flex-1 overflow-y-auto pr-1">
               <div className="flex flex-col gap-4 text-sm font-medium text-stone-600">
                 {/* 🟢 1. 여기에 && !t.is_deleted 추가! */}
