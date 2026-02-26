@@ -1,71 +1,104 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Gantt, ViewMode } from 'gantt-task-react';
+import 'gantt-task-react/dist/index.css';
 
-function Milestone() {
-	// 마일스톤 갠트차트용 더미 데이터
-	const milestoneData = [
-		{ id: 1, step: "A Step (분석 및 설계)", task: "프로젝트 착수", start: 1, end: 1, isHighlight: false },
-		{ id: 2, step: "A Step (분석 및 설계)", task: "요구사항 분석 및 정의", start: 1, end: 2, isHighlight: false },
-		{ id: 3, step: "A Step (분석 및 설계)", task: "디자인 시안 제작 및 확정", start: 3, end: 3, isHighlight: true }, // 노란색 강조 (1차 컨펌)
-		{ id: 4, step: "B Step (단위 개발)", task: "사용자화면 디자인 및 코딩", start: 4, end: 7, isHighlight: false },
-		{ id: 5, step: "B Step (단위 개발)", task: "프로그램 모듈 개발", start: 5, end: 8, isHighlight: false },
-		{ id: 6, step: "C Step (통합/테스트)", task: "실서버 상 통합테스트", start: 9, end: 11, isHighlight: false },
-		{ id: 7, step: "오픈", task: "검수 및 오픈", start: 12, end: 12, isHighlight: true } // 노란색 강조 (최종 마감)
-	];
+function Milestone({ tasks = [] }) {
+    const [view, setView] = useState(ViewMode.Day);
 
-	// 1주차 ~ 12주차 생성
-	const totalWeeks = 12; 
-	const weeksArray = Array.from({ length: totalWeeks }, (_, i) => i + 1);
+    // 1. DB 데이터를 간트 차트가 읽을 수 있는 형식으로 변환
+    const ganttTasks = tasks.map(task => {
+        // 시작일 계산 (DB 등록일 기준)
+        const start = task.created_at ? new Date(task.created_at.split('T')[0]) : new Date();
+        start.setHours(0, 0, 0, 0);
+        
+        // 마감일 계산 (date 필드 파싱)
+        let end = new Date(start);
+        if (task.date) {
+            try {
+                const [datePart] = task.date.split(' ');
+                const [month, day] = datePart.split('/');
+                end = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day));
+            } catch(e) {
+                end.setDate(start.getDate() + 1);
+            }
+        } else {
+            end.setDate(start.getDate() + 1);
+        }
 
-	return (
-		<div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm overflow-hidden p-8 text-stone-800">
-			<div className="mb-6 shrink-0">
-				<h3 className="text-2xl font-bold">프로젝트 마일스톤</h3>
-				<p className="text-sm text-stone-500 mt-2">전체 공정 기반 1차 마감일 및 진행 현황 (Gantt Chart)</p>
-			</div>
+        // 간트 차트는 시작일과 종료일이 같거나 역전되면 에러가 나기 때문에 최소 하루 차이 보장
+        if (start.getTime() >= end.getTime()) {
+            end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+        }
 
-			<div className="flex-1 overflow-auto custom-scrollbar">
-				<table className="w-full min-w-[900px] border-collapse text-sm text-center">
-					<thead>
-						<tr>
-							<th className="border border-stone-200 bg-stone-100 p-3 w-40 font-bold">Level</th>
-							<th className="border border-stone-200 bg-stone-100 p-3 w-56 font-bold">Task</th>
-							{weeksArray.map(week => (
-								<th key={week} className="border border-stone-200 bg-stone-800 text-white p-2 w-12 font-medium">
-									{week}W
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{milestoneData.map((item) => (
-							<tr key={item.id} className="hover:bg-stone-50 transition-colors">
-								<td className="border border-stone-200 p-2 font-bold text-xs text-stone-600 bg-stone-50">
-									{item.step}
-								</td>
-								<td className="border border-stone-200 p-2 text-xs font-medium text-left px-4">
-									{item.task}
-								</td>
-								{weeksArray.map(week => {
-									// 진행 기간에 해당하면 색상 채우기
-									const isActive = week >= item.start && week <= item.end;
-									// Highlight 여부에 따라 팀원이 준 이미지처럼 노란색(중요 마일스톤) 또는 회색 적용
-									const barColor = item.isHighlight ? "bg-yellow-400" : "bg-stone-300";
+        return {
+            start: start,
+            end: end,
+            name: task.title,
+            id: task.id,
+            type: 'task', 
+            progress: task.completed ? 100 : 0,
+            isDisabled: true, // 일단 드래그 수정은 막아둠 (보기 전용)
+            styles: { 
+                progressColor: '#f97316', // 주황색 채우기
+                progressSelectedColor: '#ea580c',
+                backgroundColor: '#fed7aa', // 옅은 주황색 배경
+                backgroundSelectedColor: '#fdba74'
+            }
+        };
+    });
 
-									return (
-										<td key={week} className="border border-stone-200 p-1">
-											{isActive && (
-												<div className={`w-full h-5 ${barColor} shadow-sm`}></div>
-											)}
-										</td>
-									);
-								})}
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-		</div>
-	);
+    // 뷰 모드에 따른 컬럼 너비 조절
+    let columnWidth = 60;
+    if (view === ViewMode.Month) columnWidth = 200;
+    else if (view === ViewMode.Week) columnWidth = 150;
+
+    return (
+        <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800 overflow-hidden">
+            <div className="flex justify-between items-center mb-6 shrink-0">
+                <h2 className="text-2xl font-bold hidden md:block">마일스톤 로드맵</h2>
+                
+                {/* 뷰 모드 전환 버튼 */}
+                <div className="flex gap-2 bg-stone-100 p-1 rounded-xl">
+                    <button 
+                        onClick={() => setView(ViewMode.Day)} 
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${view === ViewMode.Day ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                        일간
+                    </button>
+                    <button 
+                        onClick={() => setView(ViewMode.Week)} 
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${view === ViewMode.Week ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                        주간
+                    </button>
+                    <button 
+                        onClick={() => setView(ViewMode.Month)} 
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${view === ViewMode.Month ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                        월간
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {ganttTasks.length > 0 ? (
+                    <Gantt 
+                        tasks={ganttTasks}
+                        viewMode={view}
+                        columnWidth={columnWidth}
+                        listCellWidth="200px" 
+                        barCornerRadius={8}
+                        fontFamily="inherit"
+                        todayColor="rgba(251, 146, 60, 0.1)" // 오늘 날짜 하이라이트 (오렌지 톤)
+                    />
+                ) : (
+                    <div className="flex items-center justify-center h-full text-stone-400 font-medium">
+                        아직 등록된 마일스톤이 없습니다. 대시보드에서 마일스톤을 추가해 보세요.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
 
 export default Milestone;
