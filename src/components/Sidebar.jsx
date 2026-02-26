@@ -183,8 +183,8 @@ function Sidebar() {
 
 				<nav className="flex flex-col gap-6 text-stone-500 font-medium mb-8 text-left">
 					<NavLink to="/" className={navStyle}>대시보드</NavLink>
-					<NavLink to="/calendar" className={navStyle}>캘린더</NavLink>
-					<NavLink to="/milestone" className={navStyle}>마일스톤</NavLink>
+					<NavLink to="/calendar" className={navStyle}>캘린더(Task)</NavLink>
+					<NavLink to="/milestone" className={navStyle}>캘린더(Milestone)</NavLink>
 					<NavLink to="/log" className={navStyle}>작업 로그</NavLink>
 					<NavLink to="/trash" className={navStyle}>휴지통</NavLink>
 				</nav>
