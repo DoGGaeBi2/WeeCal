@@ -122,13 +122,9 @@ function App() {
 					<Routes>
 						<Route path="/" element={<Dashboard tasks={tasks} addTask={addTask} setTasks={setTasks} />} />
 						{/* 🟢 1. 태스크 캘린더: 마일스톤이 아닌 것(!t.is_milestone)만 걸러서 전달 */}
-                        <Route 
-                            path="/calendar" 
-                            element={<Calendar tasks={tasks.filter(t => !t.is_milestone)} title="태스크 캘린더" />} 
-                        />
-                        
+                        <Route path="/calendar" element={<Calendar tasks={tasks.filter(t => !t.is_milestone && !t.is_deleted)} title="태스크 캘린더" />} />
                         {/* 🟢 2. 마일스톤 캘린더: 마일스톤인 것(t.is_milestone)만 걸러서 전달 */}
-                        <Route path="/milestone" element={<Milestone tasks={tasks.filter(t => t.is_milestone)} />} />
+                        <Route path="/milestone" element={<Milestone tasks={tasks.filter(t => t.is_milestone && !t.is_deleted)} />} />
 						<Route path="/log" element={<LogRecord />} />
 						<Route path="/trash" element={<Trash tasks={tasks} setTasks={setTasks} />} />
            				{/* 🟢 수정: Profile에 필요한 모든 권한과 데이터를 넘겨줘! */}

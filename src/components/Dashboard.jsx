@@ -81,16 +81,25 @@ function Dashboard({ tasks, addTask, setTasks }) {
     };
 
     // 🟢 복수 삭제 함수 (가짜 삭제)
-	const deleteSelectedTasks = async () => {
-	if (selectedIds.length === 0) return;
-	const { error } = await supabase.from('tasks').update({ is_deleted: true }).in('id', selectedIds);
-	if (!error) {
-		setTasks(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, is_deleted: true } : t)); 
-		setSelectedIds([]);
-		setIsDeleteMode(false);
-		recordLog('삭제', `${selectedIds.length}개의 일정`);
-	}
-	};
+    const deleteSelectedTasks = async () => {
+        if (selectedIds.length === 0) return;
+        
+        // 🟢 삭제할 일정들이 뭔지 DB 업데이트 전에 미리 찾아두기
+        const tasksToDelete = tasks.filter(t => selectedIds.includes(t.id));
+        
+        const { error } = await supabase.from('tasks').update({ is_deleted: true }).in('id', selectedIds);
+        
+        if (!error) {
+            setTasks(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, is_deleted: true } : t)); 
+            setSelectedIds([]);
+            setIsDeleteMode(false);
+            
+            // 🟢 "N개의 일정"이라고 뭉뚱그리지 않고, 찾은 일정들을 하나씩 돌면서 개별 로그 발사!
+            tasksToDelete.forEach(task => {
+                recordLog('삭제', task.title);
+            });
+        }
+    };
 
 	// 🟢 개별 수정 함수 (버블에 마우스 올렸을 때 쓰는 용도)
 	const editSingleTask = async (task, e) => {
