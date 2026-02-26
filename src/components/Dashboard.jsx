@@ -248,16 +248,16 @@ function Dashboard({ tasks, addTask, setTasks }) {
         {/* 좌측: 태스크 목록 */}
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
-						<div className="flex gap-2">
+						<div className="flex gap-2 mb-6">
 							<button 
 								onClick={() => setViewMode('task')} 
-								className={`px-4 py-2 text-lg font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'task' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
+								className={`px-4 py-2 font-bold rounded-xl transition-all ${viewMode === 'task' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
 							>
 								태스크 목록
 							</button>
 							<button 
 								onClick={() => setViewMode('milestone')} 
-								className={`px-4 py-2 text-lg font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'milestone' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
+								className={`px-4 py-2 font-bold rounded-xl transition-all ${viewMode === 'milestone' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
 							>
 								마일스톤 목록
 							</button>
