@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
-function Log() {
+function LogRecord() {
     const [logs, setLogs] = useState([]);
 
     useEffect(() => {
@@ -50,4 +50,4 @@ function Log() {
     );
 }
 
-export default Log;
+export default LogRecord;
