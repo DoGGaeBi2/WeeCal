@@ -91,32 +91,45 @@ function Milestone({ tasks = [] }) {
                         
                         <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1">
                             {col.tasks.length > 0 ? col.tasks.map(task => (
-                                <div key={task.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 flex flex-col gap-2 transition-all hover:border-orange-300 hover:shadow-md">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <h4 className="font-bold text-stone-800 leading-snug break-keep">{task.title}</h4>
-                                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${task.color === 'stone' ? 'bg-stone-100 text-stone-500' : `bg-${task.color}-100 text-${task.color}-600`}`}>
-                                            {task.category || '마일스톤'}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="mt-1 pt-2 border-t border-stone-100">
-                                        <p className="text-xs font-semibold text-stone-500 tracking-tight">
-                                            {task.startStr} ~ {task.endStr}
-                                        </p>
-                                        <p className="text-[11px] font-bold text-orange-500 mt-0.5">
-                                            Duration: {task.duration} day(s)
-                                        </p>
-                                    </div>
-                                    
-                                    {task.memo && (
-                                        <div className="mt-1 bg-stone-50 p-2 rounded-lg">
-                                            <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed break-keep">
-                                                {task.memo}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )) : (
+								<div 
+									key={task.id} 
+									className={`p-4 rounded-xl shadow-sm border flex flex-col gap-2 transition-all ${
+										task.completed 
+											? 'bg-stone-50 border-stone-200 opacity-60' 
+											: 'bg-white border-stone-200 hover:border-orange-300 hover:shadow-md'
+									}`}
+								>
+									<div className="flex justify-between items-start gap-2">
+										<h4 className={`font-bold leading-snug break-keep ${task.completed ? 'text-stone-400 line-through' : 'text-stone-800'}`}>
+											{task.completed && "✓ "}{task.title}
+										</h4>
+										<span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+											task.completed 
+												? 'bg-stone-200 text-stone-500' 
+												: (task.color === 'stone' ? 'bg-stone-100 text-stone-500' : `bg-${task.color}-100 text-${task.color}-600`)
+										}`}>
+											{task.completed ? '완료됨' : (task.category || '마일스톤')}
+										</span>
+									</div>
+									
+									<div className="mt-1 pt-2 border-t border-stone-100">
+										<p className={`text-xs font-semibold tracking-tight ${task.completed ? 'text-stone-400' : 'text-stone-500'}`}>
+											{task.startStr} ~ {task.endStr}
+										</p>
+										<p className={`text-[11px] font-bold mt-0.5 ${task.completed ? 'text-stone-400' : 'text-orange-500'}`}>
+											Duration: {task.duration} day(s)
+										</p>
+									</div>
+									
+									{task.memo && (
+										<div className={`mt-1 p-2 rounded-lg ${task.completed ? 'bg-stone-100' : 'bg-stone-50'}`}>
+											<p className={`text-xs line-clamp-3 leading-relaxed break-keep ${task.completed ? 'text-stone-400' : 'text-stone-600'}`}>
+												{task.memo}
+											</p>
+										</div>
+									)}
+								</div>
+							)) : (
                                 <div className="flex-1 flex items-center justify-center border-2 border-dashed border-stone-200 rounded-xl p-6 text-center">
                                     <span className="text-xs font-bold text-stone-400">예정된 일정이 없습니다</span>
                                 </div>

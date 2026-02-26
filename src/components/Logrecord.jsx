@@ -36,7 +36,7 @@ function LogRecord() {
                             <span className="text-xs text-stone-400 w-24 shrink-0">{formatTime(log.created_at)}</span>
                             <span className="font-bold text-stone-700 w-20 shrink-0 truncate">{log.user_name}</span>
                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold shrink-0 ${
-                                log.action === '등록' ? 'bg-blue-100 text-blue-600' :
+                                log.action === '등록' ? 'bg-purple-100 text-purple-600' :
                                 log.action === '수정' ? 'bg-orange-100 text-orange-600' :
                                 log.action === '삭제' ? 'bg-red-100 text-red-600' :
                                 log.action === '복구' ? 'bg-green-100 text-green-600' : 'bg-stone-100 text-stone-600'

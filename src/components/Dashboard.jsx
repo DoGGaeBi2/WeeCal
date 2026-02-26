@@ -200,11 +200,14 @@ function Dashboard({ tasks, addTask, setTasks }) {
 				const aiDataArray = JSON.parse(cleanJson);
 
 				// 🟢 수정 2: AI가 찾아낸 일정이 여러 개일 수 있으니 반복문을 돌면서 차례대로 DB에 넣기
-                for (const aiData of aiDataArray) {
-                    // 🟢 핵심 추가: 지금 보고 있는 화면이 '마일스톤'이면 true, 아니면 false를 데이터에 섞어서 보냄
-                    await addTask({ ...aiData, is_milestone: viewMode === 'milestone' });
-                }
-				
+				for (const aiData of aiDataArray) {
+					// 🟢 핵심 추가: 지금 보고 있는 화면이 '마일스톤'이면 true, 아니면 false를 데이터에 섞어서 보냄
+					await addTask({ ...aiData, is_milestone: viewMode === 'milestone' });
+					
+					// 🟢 이 줄을 새로 추가해 줘. 일정이 등록될 때마다 '등록' 로그를 발사해.
+					recordLog('등록', aiData.title);
+				}
+								
 				setInputText(''); // 입력창 비우기
 				
 			} catch (error) {
