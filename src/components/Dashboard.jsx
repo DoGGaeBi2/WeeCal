@@ -22,6 +22,17 @@ function Dashboard({ tasks, addTask, setTasks }) {
 	const [animatingIds, setAnimatingIds] = useState([]);
 
 	const [viewMode, setViewMode] = useState('task');
+	const [isSwitchingView, setIsSwitchingView] = useState(false);
+
+	// 🟢 휙! 뒤집어지는 애니메이션과 함께 모드를 바꿔주는 마법의 함수
+    const handleViewModeChange = (newMode) => {
+        if (viewMode === newMode) return;
+        setIsSwitchingView(true); // 1. 먼저 목록을 뒤집어서 안 보이게 함
+        setTimeout(() => {
+            setViewMode(newMode); // 2. 0.15초 뒤에 데이터 변경
+            setIsSwitchingView(false); // 3. 다시 목록을 똑바로 보여줌
+        }, 150);
+    };
 
 	// 🟢 작업 로그를 DB에 쏴주는 스파이 함수
     const recordLog = async (action, taskTitle) => {
@@ -189,9 +200,10 @@ function Dashboard({ tasks, addTask, setTasks }) {
 				const aiDataArray = JSON.parse(cleanJson);
 
 				// 🟢 수정 2: AI가 찾아낸 일정이 여러 개일 수 있으니 반복문을 돌면서 차례대로 DB에 넣기
-				for (const aiData of aiDataArray) {
-					await addTask(aiData);
-				}
+                for (const aiData of aiDataArray) {
+                    // 🟢 핵심 추가: 지금 보고 있는 화면이 '마일스톤'이면 true, 아니면 false를 데이터에 섞어서 보냄
+                    await addTask({ ...aiData, is_milestone: viewMode === 'milestone' });
+                }
 				
 				setInputText(''); // 입력창 비우기
 				
@@ -219,28 +231,55 @@ function Dashboard({ tasks, addTask, setTasks }) {
     <div className="flex flex-col gap-4 h-full overflow-hidden">
       
       {/* 1. 스마트 입력창 */}
-			<div className="bg-white p-6 rounded-[2rem] shadow-sm shrink-0">
-				<textarea 
-					value={inputText}
-					onChange={(e) => setInputText(e.target.value)}
-					onKeyDown={(e) => {
-                        if (e.ctrlKey && e.key === 'Enter') handleAiSubmit();
-                    }}
-					placeholder={`고객사 메세지나 텍스트를 통째로 복사해서 붙여넣으세요.\n(※ 행사나 휴가 등의 특별 스케줄은 '행사', '휴가' 등의 단어를 넣어주세요.)`}
-					className="w-full h-24 p-5 bg-stone-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-300 outline-none resize-none text-stone-700 placeholder-stone-400"
-				/>
-				<div className="flex justify-end mt-3">
-					<button 
-						onClick={handleAiSubmit}
-						disabled={isLoading}
-						className={`text-white px-6 py-2.5 rounded-full font-bold shadow-md transition-all cursor-pointer ${
-							isLoading ? 'bg-stone-400' : 'bg-orange-400 hover:bg-orange-500'
-						}`}
-					>
-						{isLoading ? 'AI가 분석 중...' : '자동 가공 및 등록'}
-					</button>
-				</div>
-			</div>
+      <div className="bg-white p-6 rounded-[2rem] shadow-sm shrink-0">
+          
+          {/* 🟢 입력창 바로 위에 예쁜 토글 스위치 달기! */}
+          <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-stone-800 flex items-center gap-2">
+                  {viewMode === 'task' ? '📝 태스크 추가' : '🚩 마일스톤 추가'}
+              </h3>
+              <div className="flex gap-1 bg-stone-100 p-1 rounded-xl">
+                  <button 
+                      onClick={() => handleViewModeChange('task')} 
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'task' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                  >
+                      태스크 (Tab)
+                  </button>
+                  <button 
+                      onClick={() => handleViewModeChange('milestone')} 
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'milestone' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                  >
+                      마일스톤 (Tab)
+                  </button>
+              </div>
+          </div>
+
+          <textarea 
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                  // 🟢 TAB 키 누르면 입력창 밖으로 안 나가고 바로 모드 전환!
+                  if (e.key === 'Tab') {
+                      e.preventDefault(); 
+                      handleViewModeChange(viewMode === 'task' ? 'milestone' : 'task');
+                  }
+                  if (e.ctrlKey && e.key === 'Enter') handleAiSubmit();
+              }}
+              placeholder={`고객사 메세지나 텍스트를 통째로 복사해서 붙여넣으세요.\n(※ 행사나 휴가 등의 특별 스케줄은 '행사', '휴가' 등의 단어를 넣어주세요.)`}
+              className="w-full h-24 p-5 bg-stone-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-300 outline-none resize-none text-stone-700 placeholder-stone-400"
+          />
+          <div className="flex justify-end mt-3">
+              <button 
+                  onClick={handleAiSubmit}
+                  disabled={isLoading}
+                  className={`text-white px-6 py-2.5 rounded-full font-bold shadow-md transition-all cursor-pointer ${
+                      isLoading ? 'bg-stone-400' : 'bg-orange-400 hover:bg-orange-500'
+                  }`}
+              >
+                  {isLoading ? 'AI가 분석 중...' : '자동 가공 및 등록'}
+              </button>
+          </div>
+      </div>
 
       {/* 2. 하단 콘텐츠 영역 */}
       <div className="flex gap-4 flex-1 min-h-0">
@@ -248,20 +287,15 @@ function Dashboard({ tasks, addTask, setTasks }) {
         {/* 좌측: 태스크 목록 */}
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
-						<div className="flex gap-2">
-							<button 
-								onClick={() => setViewMode('task')} 
-								className={`px-4 py-2 text-lg font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'task' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
-							>
-								태스크 목록
-							</button>
-							<button 
-								onClick={() => setViewMode('milestone')} 
-								className={`px-4 py-2 text-lg font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'milestone' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
-							>
-								마일스톤 목록
-							</button>
+						{/* 🟢 아까 넣은 토글 지우고, 현재 모드에 따라 바뀌는 제목으로 복구! */}
+						<h3 className="font-bold text-lg text-stone-800">
+							{viewMode === 'task' ? '태스크 목록' : '마일스톤 목록'}
+						</h3>
+									
+						<div className="flex items-center gap-2">
+
 						</div>
+
 						
 						<div className="flex items-center gap-2">
 							{/* 🟢 1. 삭제 버튼들을 맨 왼쪽으로 이동 */}
@@ -315,7 +349,10 @@ function Dashboard({ tasks, addTask, setTasks }) {
 							</div>
 						</div>
 
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+					<div 
+						className="flex-1 overflow-y-auto pr-2 custom-scrollbar transition-transform duration-150 ease-in-out"
+						style={{ transform: isSwitchingView ? 'rotateX(90deg)' : 'rotateX(0deg)' }}
+					>
 						<div className="flex flex-col gap-4">
 							{sortedTasks.map((task) => (
 								<div 
@@ -383,10 +420,10 @@ function Dashboard({ tasks, addTask, setTasks }) {
 										</div>
 									)}
 								</div>
-              ))}
-            </div>
-          </div>
-        </div>
+							))}
+							</div>
+						</div>
+						</div>
 
         {/* 우측: 위젯 영역 */}
         <div className="flex-[1] flex flex-col gap-4 min-h-0">
