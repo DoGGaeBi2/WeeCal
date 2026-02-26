@@ -14,7 +14,7 @@ import Auth from './pages/Auth'; // [추가] 로그인 페이지
 import Profile from './pages/Profile'; // [추가] 프로필 페이지 불러오기
 
 import Trash from './components/Trash'; // [추가] 휴지통 페이지 불러오기
-import Log from './components/Logrecord'; // [추가] 로그 페이지 불러오기
+import LogRecord from './components/Logrecord'; // [추가] 로그 페이지 불러오기
 
 function App() {
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
@@ -78,14 +78,6 @@ function App() {
 		return () => supabase.removeChannel(channel);
 	}, [session]);
 
-	// UI 렌더링 부분 (return 내부 최하단)
-	{notification && (
-		<div className={`fixed z-[9999] p-4 rounded-2xl shadow-2xl transition-all animate-bounce
-			${notification.type === 'task' ? 'top-10 left-1/2 -translate-x-1/2 bg-orange-500 text-white' : 'bottom-10 right-10 bg-white border-2 border-orange-400 text-stone-800'}`}>
-			<p className="font-bold text-sm">{notification.message}</p>
-		</div>
-	)}
-
 	// [추가] 앱이 켜질 때 로그인 상태 확인하기
 	useEffect(() => {
 		// 현재 세션 가져오기
@@ -112,6 +104,14 @@ function App() {
 	return (
 		<BrowserRouter>
 			<div className="flex h-screen bg-stone-100 p-4 gap-4 font-sans text-stone-800">
+				
+				{/* UI 렌더링 부분 */}
+				{notification && (
+					<div className={`fixed z-[9999] p-4 rounded-2xl shadow-2xl transition-all animate-bounce
+						${notification.type === 'task' ? 'top-10 left-1/2 -translate-x-1/2 bg-orange-500 text-white' : 'bottom-10 right-10 bg-white border-2 border-orange-400 text-stone-800'}`}>
+						<p className="font-bold text-sm">{notification.message}</p>
+					</div>
+				)}
 				<Sidebar />
 				
 				<main className="flex-1 flex flex-col gap-4">
@@ -122,7 +122,7 @@ function App() {
 						<Route path="/" element={<Dashboard tasks={tasks} addTask={addTask} setTasks={setTasks} />} />
 						<Route path="/calendar" element={<Calendar tasks={tasks} />} />
 						<Route path="/milestone" element={<Milestone />} />
-						<Route path="/log" element={<Log />} />
+						<Route path="/log" element={<LogRecord />} />
 						<Route path="/trash" element={<Trash tasks={tasks} setTasks={setTasks} />} />
            				{/* 🟢 수정: Profile에 필요한 모든 권한과 데이터를 넘겨줘! */}
 						<Route 
