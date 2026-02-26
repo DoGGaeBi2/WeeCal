@@ -51,7 +51,8 @@ function App() {
 				"isWeekly": newTask.isWeekly,   // 🟢 추가: 주간 일정 여부 전송
 				"isMonthly": newTask.isMonthly, // 🟢 추가: 월간 일정 여부 전송
 				color: newTask.color || 'orange',
-				created_by: user.id
+				created_by: user.id,
+				is_milestone: newTask.is_milestone || false
 			}])
 			.select();
 

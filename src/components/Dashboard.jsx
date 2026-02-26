@@ -21,6 +21,8 @@ function Dashboard({ tasks, addTask, setTasks }) {
   // 🟢 여기에 스르륵 밀리는 애니메이션을 관리할 상태를 딱 하나 추가!
 	const [animatingIds, setAnimatingIds] = useState([]);
 
+	const [viewMode, setViewMode] = useState('task');
+
 	// 🟢 작업 로그를 DB에 쏴주는 스파이 함수
     const recordLog = async (action, taskTitle) => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -101,7 +103,10 @@ function Dashboard({ tasks, addTask, setTasks }) {
 	};
 
     // 🟢 필터링 로직 (휴지통 간 건 안 보이게 !task.is_deleted 추가!)
-	const filteredTasks = tasks.filter(task => !task.is_deleted).filter(task => {
+	const filteredTasks = tasks
+    .filter(task => !task.is_deleted)
+    .filter(task => viewMode === 'milestone' ? task.is_milestone : !task.is_milestone) // 마일스톤 필터 부분
+    .filter(task => {
 	if (selectedFilter === '완료') return task.completed;
 	if (selectedFilter === '전체') return !task.completed;
 	return !task.completed && task.category === selectedFilter;
@@ -243,7 +248,20 @@ function Dashboard({ tasks, addTask, setTasks }) {
         {/* 좌측: 태스크 목록 */}
         <div className="flex-[2] bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col min-h-0">
           <div className="flex justify-between items-center mb-6 shrink-0">
-						<h3 className="font-bold text-lg text-stone-800">태스크 목록</h3>
+						<div className="flex gap-2">
+							<button 
+								onClick={() => setViewMode('task')} 
+								className={`px-4 py-2 text-lg font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'task' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
+							>
+								태스크 목록
+							</button>
+							<button 
+								onClick={() => setViewMode('milestone')} 
+								className={`px-4 py-2 text-lg font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'milestone' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200'}`}
+							>
+								마일스톤 목록
+							</button>
+						</div>
 						
 						<div className="flex items-center gap-2">
 							{/* 🟢 1. 삭제 버튼들을 맨 왼쪽으로 이동 */}
@@ -274,28 +292,28 @@ function Dashboard({ tasks, addTask, setTasks }) {
 							<div className="relative">
 								<button 
 									onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 flex items-center gap-2 hover:bg-stone-100 cursor-pointer transition-all"
-              >
-                <span className={`w-2 h-2 rounded-full ${filterOptions.find(opt => opt.name === selectedFilter)?.color}`}></span>
-                {selectedFilter} 필터 ▾
-              </button>
-              {isFilterOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white border border-stone-100 rounded-2xl shadow-xl z-10 overflow-hidden">
-                  {filterOptions.map((opt) => (
-                    <button
-                      key={opt.name}
-                      onClick={() => { setSelectedFilter(opt.name); setIsFilterOpen(false); }}
-                      className="w-full px-4 py-2.5 text-left text-sm font-medium text-stone-600 hover:bg-orange-50 hover:text-orange-500 transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className={`w-2 h-2 rounded-full ${opt.color}`}></span>
-                      {opt.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-       </div>
+									className="px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 flex items-center gap-2 hover:bg-stone-100 cursor-pointer transition-all"
+								>
+									<span className={`w-2 h-2 rounded-full ${filterOptions.find(opt => opt.name === selectedFilter)?.color}`}></span>
+									{selectedFilter} 필터 ▾
+								</button>
+								{isFilterOpen && (
+									<div className="absolute right-0 mt-2 w-32 bg-white border border-stone-100 rounded-2xl shadow-xl z-10 overflow-hidden">
+									{filterOptions.map((opt) => (
+										<button
+										key={opt.name}
+										onClick={() => { setSelectedFilter(opt.name); setIsFilterOpen(false); }}
+										className="w-full px-4 py-2.5 text-left text-sm font-medium text-stone-600 hover:bg-orange-50 hover:text-orange-500 transition-colors flex items-center gap-2 cursor-pointer"
+										>
+										<span className={`w-2 h-2 rounded-full ${opt.color}`}></span>
+										{opt.name}
+										</button>
+									))}
+									</div>
+								)}
+								</div>
+							</div>
+						</div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
 						<div className="flex flex-col gap-4">
