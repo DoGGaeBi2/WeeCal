@@ -40,7 +40,7 @@ function Trash({ tasks, setTasks }) {
 
   return (
     <div className="p-8 bg-white rounded-[2rem] shadow-sm h-full flex flex-col">
-      <h2 className="text-2xl font-bold mb-6 text-stone-800">🗑️ 휴지통</h2>
+      <h2 className="text-2xl font-bold mb-6 text-stone-800">휴지통</h2>
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
         {trashTasks.length === 0 ? <p className="text-stone-400 font-medium">휴지통이 비어있습니다.</p> : 
           trashTasks.map(task => (
