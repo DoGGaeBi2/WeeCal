@@ -18,7 +18,7 @@ function LogRecord() {
     }, []);
 
     const fetchLogs = async () => {
-        const { data } = await supabase.from('task_logs').order('created_at', { ascending: false });
+        const { data } = await supabase.from('task_logs').select('*').order('created_at', { ascending: false });
         if (data) setLogs(data);
     };
 
