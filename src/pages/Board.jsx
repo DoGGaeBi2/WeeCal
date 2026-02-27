@@ -70,10 +70,10 @@ function Board() {
         setNewTitle(post.title);
         try {
             const parsedBlocks = JSON.parse(post.content);
-            // 🟢 핵심 수정: 불러온 블록들에 고유한 ID(이름표)를 강제로 달아줌!
+            // 🟢 불러온 블록에 id가 없으면 억지로라도 붙여줌!
             const blocksWithId = parsedBlocks.map((b, i) => ({
                 ...b,
-                id: Date.now() + i 
+                id: b.id || Date.now() + i 
             }));
             setBlocks(blocksWithId);
         } catch (e) {
@@ -103,7 +103,7 @@ function Board() {
             } else if (block.type === 'image' && block.value) {
                 finalBlocks.push({ type: 'image', value: block.value });
             } else if (block.type === 'text' && block.value.trim()) {
-                finalBlocks.push({ type: 'text', value: block.value });
+                finalBlocks.push({ id: block.id, type: 'text', value: block.value });
             }
         }
 
