@@ -4,60 +4,69 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 function Board() {
+    // 🟢 viewMode: 'list' (목록), 'write' (글쓰기/수정), 'detail' (상세보기)
+    const [viewMode, setViewMode] = useState('list');
     const [posts, setPosts] = useState([]);
-    const [isWriting, setIsWriting] = useState(false);
-    const [newTitle, setNewTitle] = useState('');
-    const [blocks, setBlocks] = useState([{ id: Date.now(), type: 'text', value: '' }]);
+    const [selectedPost, setSelectedPost] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [commentInputs, setCommentInputs] = useState({});
     const [myId, setMyId] = useState(null);
 
-        // 🟢 수정할 게시글의 ID를 저장할 상태
+    // 글쓰기/수정용 상태
     const [editingPostId, setEditingPostId] = useState(null);
+    const [newTitle, setNewTitle] = useState('');
+    const [blocks, setBlocks] = useState([{ id: Date.now(), type: 'text', value: '' }]);
 
-    // 🟢 수정 버튼을 눌렀을 때 실행될 함수
-    const startEditing = (post) => {
-        setNewTitle(post.title); // 제목 채우기
-        let contentBlocks = [];
-        try { 
-            contentBlocks = JSON.parse(post.content); 
-        } catch(e) { 
-            contentBlocks = [{ id: Date.now(), type: 'text', value: post.content }]; 
-        }
-        setBlocks(contentBlocks); // 내용 채우기
-        setEditingPostId(post.id); // 수정 모드 전환
-        setIsWriting(true); // 작성 창 열기
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // 화면 최상단으로 이동
-    };
+    // 댓글용 상태
+    const [commentInput, setCommentInput] = useState('');
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editCommentValue, setEditCommentValue] = useState('');
 
     useEffect(() => {
         fetchPosts();
         supabase.auth.getUser().then(({ data: { user } }) => { if (user) setMyId(user.id); });
     }, []);
 
+    // 1. 게시글 목록 불러오기 (상세보기 시 댓글과 작성자 프사 포함)
     async function fetchPosts() {
         const { data } = await supabase
             .from('posts')
             .select('*, comments(*), author:profiles(avatar_url)')
             .order('created_at', { ascending: false });
-        if (data) setPosts(data);
+        if (data) {
+            setPosts(data);
+            // 상세보기 중이었다면 데이터 동기화
+            if (selectedPost) {
+                const updated = data.find(p => p.id === selectedPost.id);
+                if (updated) setSelectedPost(updated);
+            }
+        }
     }
 
-    const addTextBlock = () => setBlocks([...blocks, { id: Date.now(), type: 'text', value: '' }]);
-    const addImageBlock = (e) => {
-        const file = e.target.files[0];
-        if (file) setBlocks([...blocks, { id: Date.now(), type: 'image', file, preview: URL.createObjectURL(file) }]);
+    // 2. 뷰 전환 함수들
+    const goWrite = () => {
+        setEditingPostId(null);
+        setNewTitle('');
+        setBlocks([{ id: Date.now(), type: 'text', value: '' }]);
+        setViewMode('write');
     };
-    const updateBlock = (id, newValue) => setBlocks(blocks.map(b => b.id === id ? { ...b, value: newValue } : b));
-    const removeBlock = (id) => setBlocks(blocks.filter(b => b.id !== id));
 
-    const deletePost = async (id) => {
-        if (window.confirm("이 게시글을 정말 삭제할까?")) {
-            const { error } = await supabase.from('posts').delete().eq('id', id);
-            if (!error) fetchPosts();
+    const goDetail = (post) => {
+        setSelectedPost(post);
+        setViewMode('detail');
+    };
+
+    const startEditing = (post) => {
+        setEditingPostId(post.id);
+        setNewTitle(post.title);
+        try {
+            setBlocks(JSON.parse(post.content));
+        } catch (e) {
+            setBlocks([{ id: Date.now(), type: 'text', value: post.content }]);
         }
+        setViewMode('write');
     };
 
+    // 3. 게시글 등록 및 수정 로직
     async function handlePostSubmit() {
         if (!newTitle.trim()) return alert("제목을 입력해 줘!");
         setIsLoading(true);
@@ -67,7 +76,6 @@ function Board() {
 
         const finalBlocks = [];
         for (const block of blocks) {
-            // 이미지 업로드 로직 (기존과 동일)
             if (block.type === 'image' && block.file) {
                 const fileExt = block.file.name.split('.').pop();
                 const safeFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -77,16 +85,12 @@ function Board() {
                     finalBlocks.push({ type: 'image', value: publicUrl });
                 }
             } else if (block.type === 'image' && block.value) {
-                // 🟢 추가: 이미 업로드된 이미지는 그대로 유지
                 finalBlocks.push({ type: 'image', value: block.value });
             } else if (block.type === 'text' && block.value.trim()) {
                 finalBlocks.push({ type: 'text', value: block.value });
             }
         }
 
-        // 🟢 [수정 시작] ------------------------------------------------
-        
-        // 공통 데이터 정의
         const postData = {
             title: newTitle,
             content: JSON.stringify(finalBlocks),
@@ -94,69 +98,123 @@ function Board() {
             author_name: profile?.username || '익명'
         };
 
-        let submitError;
-
+        let error;
         if (editingPostId) {
-            // 1. 수정 모드일 때: update() 사용
-            const { error } = await supabase.from('posts').update(postData).eq('id', editingPostId);
-            submitError = error;
+            const result = await supabase.from('posts').update(postData).eq('id', editingPostId);
+            error = result.error;
         } else {
-            // 2. 새 글 작성 모드일 때: insert() 사용
-            const { error } = await supabase.from('posts').insert([postData]);
-            submitError = error;
+            const result = await supabase.from('posts').insert([postData]);
+            error = result.error;
         }
 
-        if (!submitError) {
-            setNewTitle('');
-            setBlocks([{ id: Date.now(), type: 'text', value: '' }]);
-            setIsWriting(false);
-            setEditingPostId(null); // 🟢 중요: 수정 완료 후 ID 초기화!
+        if (!error) {
+            setViewMode('list');
             fetchPosts();
-        } else {
-            alert("저장 실패 ㅠㅠ: " + submitError.message);
         }
-        
-        // 🟢 [수정 끝] --------------------------------------------------
-        
         setIsLoading(false);
     }
 
-    async function handleCommentSubmit(postId) {
-        const content = commentInputs[postId];
-        if (!content?.trim()) return;
+    // 4. 게시글 삭제
+    const deletePost = async (id) => {
+        if (window.confirm("정말 삭제할까?")) {
+            const { error } = await supabase.from('posts').delete().eq('id', id);
+            if (!error) {
+                setViewMode('list');
+                fetchPosts();
+            }
+        }
+    };
+
+    // 5. 댓글 로직 (엔터 전송 + 수정/삭제 포함)
+    async function handleCommentSubmit() {
+        if (!commentInput.trim()) return;
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
 
-        const { error } = await supabase.from('comments').insert([{
-            post_id: postId,
-            content,
+        await supabase.from('comments').insert([{
+            post_id: selectedPost.id,
+            content: commentInput,
             author_id: user.id,
             author_name: profile?.username || '익명'
         }]);
+        setCommentInput('');
+        fetchPosts();
+    }
 
-        if (!error) {
-            setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+    const deleteComment = async (id) => {
+        if (window.confirm("댓글을 삭제할까?")) {
+            await supabase.from('comments').delete().eq('id', id);
             fetchPosts();
         }
-    }
+    };
+
+    const updateComment = async (id) => {
+        if (!editCommentValue.trim()) return;
+        await supabase.from('comments').update({ content: editCommentValue }).eq('id', id);
+        setEditingCommentId(null);
+        fetchPosts();
+    };
+
+    // 블록 관리 함수들
+    const addTextBlock = () => setBlocks([...blocks, { id: Date.now(), type: 'text', value: '' }]);
+    const addImageBlock = (e) => {
+        const file = e.target.files[0];
+        if (file) setBlocks([...blocks, { id: Date.now(), type: 'image', file, preview: URL.createObjectURL(file) }]);
+    };
+    const updateBlock = (id, newValue) => setBlocks(blocks.map(b => b.id === id ? { ...b, value: newValue } : b));
+    const removeBlock = (id) => setBlocks(blocks.filter(b => b.id !== id));
 
     return (
         <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800 overflow-hidden">
-            <div className="flex justify-between items-center mb-8 shrink-0 text-left">
-                <div>
+            {/* 상단 헤더 */}
+            <div className="flex justify-between items-center mb-8 shrink-0">
+                <div onClick={() => setViewMode('list')} className="cursor-pointer">
                     <h2 className="text-2xl font-bold">팀 게시판</h2>
-                    <p className="text-sm text-stone-400 mt-1">네이버 메일처럼 자유롭게 글을 써보세요.</p>
+                    <p className="text-sm text-stone-400 mt-1">팀원들과 자유롭게 소통하세요.</p>
                 </div>
-                <button onClick={() => setIsWriting(!isWriting)} className="bg-orange-400 text-white px-6 py-2.5 rounded-full font-bold shadow-md hover:bg-orange-500 transition-all">
-                    {isWriting ? '취소' : '글쓰기'}
-                </button>
+                {viewMode === 'list' && (
+                    <button onClick={goWrite} className="bg-orange-400 text-white px-6 py-2.5 rounded-full font-bold shadow-md hover:bg-orange-500 transition-all">글쓰기</button>
+                )}
+                {viewMode !== 'list' && (
+                    <button onClick={() => setViewMode('list')} className="text-stone-400 font-bold hover:text-stone-600">목록으로</button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                {isWriting && (
-                    <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 border border-orange-100 shadow-inner text-left">
-                        <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="제목" className="w-full bg-white border-none rounded-xl px-4 py-3 mb-4 font-bold outline-none shadow-sm" />
-                        <div className="flex flex-col gap-4 mb-4">
+                
+                {/* 1. 목록 뷰 (Blog List Mode) */}
+                {viewMode === 'list' && (
+                    <div className="flex flex-col border-t border-stone-100">
+                        {posts.length > 0 ? posts.map(post => (
+                            <div 
+                                key={post.id} 
+                                onClick={() => goDetail(post)}
+                                className="flex justify-between items-center py-5 border-b border-stone-50 hover:bg-stone-50 px-4 cursor-pointer transition-colors group"
+                            >
+                                <div className="flex flex-col gap-1 text-left">
+                                    <h3 className="font-bold text-stone-800 group-hover:text-orange-500 transition-colors">{post.title}</h3>
+                                    <div className="flex items-center gap-3 text-[11px] text-stone-400">
+                                        <span className="font-bold text-stone-500">{post.author_name}</span>
+                                        <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                                        <span>댓글 {post.comments?.length || 0}</span>
+                                    </div>
+                                </div>
+                                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-stone-300 group-hover:text-orange-300">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </div>
+                        )) : (
+                            <p className="py-20 text-stone-400 italic">등록된 게시물이 없습니다.</p>
+                        )}
+                    </div>
+                )}
+
+                {/* 2. 글쓰기/수정 뷰 (Compose Mode) */}
+                {viewMode === 'write' && (
+                    <div className="bg-stone-50 rounded-[2rem] p-8 border border-orange-100 shadow-inner text-left max-w-4xl mx-auto w-full">
+                        <h3 className="text-lg font-bold mb-6 text-orange-500">{editingPostId ? '게시글 수정' : '새 게시글 작성'}</h3>
+                        <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="제목을 입력하세요" className="w-full bg-white border-none rounded-xl px-4 py-4 mb-6 font-extrabold text-xl outline-none shadow-sm" />
+                        <div className="flex flex-col gap-6 mb-6">
                             {blocks.map((block) => (
                                 <div key={block.id} className="relative group">
                                     {block.type === 'text' ? (
@@ -164,93 +222,121 @@ function Board() {
                                             <CKEditor
                                                 editor={ ClassicEditor }
                                                 data={block.value}
-                                                config={{ placeholder: "내용을 입력하세요...", toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', 'undo', 'redo'] }}
+                                                config={{ 
+                                                    placeholder: "내용을 입력하세요...",
+                                                    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo'] 
+                                                }}
                                                 onChange={ ( event, editor ) => { updateBlock(block.id, editor.getData()); } }
                                             />
                                         </div>
                                     ) : (
                                         <div className="relative rounded-xl overflow-hidden border-2 border-orange-200 bg-white p-2">
-                                            <img src={block.preview} className="w-full h-auto max-h-96 object-contain mx-auto" alt="preview" />
+                                            <img src={block.preview || block.value} className="w-full h-auto max-h-96 object-contain mx-auto" alt="preview" />
                                         </div>
                                     )}
-                                    <button onClick={() => removeBlock(block.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10">✕</button>
+                                    <button onClick={() => removeBlock(block.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow-md z-10">✕</button>
                                 </div>
                             ))}
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={addTextBlock} className="bg-white border border-stone-200 text-stone-500 px-4 py-2 rounded-xl text-xs font-bold hover:bg-stone-100 transition-all">＋ 텍스트 블록 추가</button>
-                            <label className="bg-white border border-stone-200 text-stone-500 px-4 py-2 rounded-xl text-xs font-bold hover:bg-stone-100 transition-all cursor-pointer">
-                                📷 이미지 블록 추가
+                        <div className="flex gap-3 mb-10">
+                            <button onClick={addTextBlock} className="bg-white border border-stone-200 text-stone-500 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-100 transition-all shadow-sm">＋ 텍스트 추가</button>
+                            <label className="bg-white border border-stone-200 text-stone-500 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-100 transition-all cursor-pointer shadow-sm">
+                                📷 이미지 추가
                                 <input type="file" hidden onChange={addImageBlock} accept="image/*" />
                             </label>
                         </div>
-                        <div className="flex justify-end mt-6">
-                            <button onClick={handlePostSubmit} disabled={isLoading} className={`px-8 py-2.5 rounded-xl font-bold text-white shadow-lg ${isLoading ? 'bg-stone-300' : 'bg-orange-400 hover:bg-orange-500'}`}>
-                                {isLoading ? '처리 중...' : (editingPostId ? '수정하기' : '게시하기')}
+                        <div className="flex justify-end pt-6 border-t border-stone-200">
+                            <button onClick={handlePostSubmit} disabled={isLoading} className={`px-10 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${isLoading ? 'bg-stone-300' : 'bg-orange-400 hover:bg-orange-500'}`}>
+                                {isLoading ? '처리 중...' : (editingPostId ? '수정 완료' : '게시하기')}
                             </button>
                         </div>
                     </div>
                 )}
 
-                <div className="flex flex-col gap-8 pb-10">
-                    {posts.map(post => {
-                        let contentBlocks = [];
-                        try { contentBlocks = JSON.parse(post.content); } catch(e) { contentBlocks = [{ type: 'text', value: post.content }]; }
-
-                        return (
-                            <div key={post.id} className="bg-white border border-stone-100 rounded-[2rem] shadow-sm overflow-hidden text-left relative group">
-                                {post.author_id === myId && (
-                                    <button 
-                                        onClick={() => startEditing(post)}
-                                        className="bg-stone-50 p-2 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50"
-                                    >
-                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                                        </svg>
-                                    </button>,
-                                    <button onClick={() => deletePost(post.id)} className="absolute top-6 right-8 opacity-0 group-hover:opacity-100 transition-opacity bg-stone-50 p-2 rounded-lg text-stone-400 hover:text-red-500">
-                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                                    </button>
-                                )}
-                                <div className="p-6 md:p-8">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <img src={post.author?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} className="w-10 h-10 rounded-full bg-stone-100 shrink-0 object-cover" alt="author" />
-                                        <div>
-                                            <p className="font-bold text-stone-800 text-sm">{post.author_name}</p>
-                                            <p className="text-[10px] text-stone-400">{new Date(post.created_at).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                    <h3 className="text-xl font-extrabold text-stone-800 mb-6">{post.title}</h3>
-                                    <div className="flex flex-col gap-4 mb-8">
-                                        {contentBlocks.map((b, i) => (
-                                            b.type === 'text' 
-                                            ? <div key={i} className="text-stone-600 text-sm leading-relaxed ck-content" dangerouslySetInnerHTML={{ __html: b.value }} />
-                                            : <img key={i} src={b.value} className="w-full h-auto rounded-2xl border border-stone-100 shadow-sm mx-auto" alt="post" />
-                                        ))}
-                                    </div>
-
-                                    <div className="bg-stone-50 rounded-2xl p-6">
-                                        <h4 className="text-xs font-bold text-stone-400 mb-4">댓글 {post.comments?.length || 0}</h4>
-                                        <div className="flex flex-col gap-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar">
-                                            {post.comments?.map(c => (
-                                                <div key={c.id} className="bg-white p-3 rounded-xl shadow-sm border border-stone-100/50">
-                                                    <div className="flex justify-between mb-1">
-                                                        <span className="font-bold text-stone-700 text-xs">{c.author_name}</span>
-                                                    </div>
-                                                    <p className="text-stone-600 text-sm leading-snug">{c.content}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="flex gap-2 bg-white p-1.5 rounded-xl border border-stone-200">
-                                            <input value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({ ...commentInputs, [post.id]: e.target.value })} placeholder="댓글 작성..." className="flex-1 text-xs outline-none px-2" />
-                                            <button onClick={() => handleCommentSubmit(post.id)} className="bg-orange-400 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold">등록</button>
-                                        </div>
+                {/* 3. 상세보기 뷰 (Detail Mode) */}
+                {viewMode === 'detail' && selectedPost && (
+                    <div className="max-w-4xl mx-auto w-full text-left pb-10">
+                        <div className="flex justify-between items-start mb-8 border-b border-stone-100 pb-8">
+                            <div>
+                                <h1 className="text-3xl font-extrabold text-stone-800 mb-4">{selectedPost.title}</h1>
+                                <div className="flex items-center gap-4">
+                                    <img src={selectedPost.author?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} className="w-10 h-10 rounded-full object-cover" alt="author" />
+                                    <div>
+                                        <p className="font-bold text-stone-700 text-sm">{selectedPost.author_name}</p>
+                                        <p className="text-[11px] text-stone-400">{new Date(selectedPost.created_at).toLocaleString()}</p>
                                     </div>
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
+                            {/* 🟢 본인 글일 때만 수정/삭제 노출 */}
+                            {selectedPost.author_id === myId && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => startEditing(selectedPost)} className="p-2 bg-stone-50 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                                    </button>
+                                    <button onClick={() => deletePost(selectedPost.id)} className="p-2 bg-stone-50 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 게시글 본문 */}
+                        <div className="flex flex-col gap-6 mb-16">
+                            {JSON.parse(selectedPost.content).map((b, i) => (
+                                b.type === 'text' 
+                                ? <div key={i} className="text-stone-600 text-lg leading-relaxed ck-content" dangerouslySetInnerHTML={{ __html: b.value }} />
+                                : <img key={i} src={b.value} className="w-full h-auto rounded-3xl border border-stone-100 shadow-sm mx-auto" alt="post" />
+                            ))}
+                        </div>
+
+                        {/* 댓글 영역 */}
+                        <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100">
+                            <h4 className="font-bold text-stone-800 mb-6 flex items-center gap-2">댓글 <span className="text-orange-500">{selectedPost.comments?.length || 0}</span></h4>
+                            
+                            {/* 댓글 리스트 */}
+                            <div className="flex flex-col gap-4 mb-8">
+                                {selectedPost.comments?.map(c => (
+                                    <div key={c.id} className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 relative group/comment">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="font-bold text-stone-700 text-xs">{c.author_name}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-stone-400">{new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                {/* 🟢 본인 댓글 수정/삭제 버블 */}
+                                                {c.author_id === myId && (
+                                                    <div className="flex gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                                                        <button onClick={() => {setEditingCommentId(c.id); setEditCommentValue(c.content);}} className="p-1 hover:text-orange-500"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg></button>
+                                                        <button onClick={() => deleteComment(c.id)} className="p-1 hover:text-red-500"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {editingCommentId === c.id ? (
+                                            <div className="flex gap-2">
+                                                <input value={editCommentValue} onChange={(e) => setEditCommentValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && updateComment(c.id)} className="flex-1 border-b border-orange-200 outline-none text-sm" />
+                                                <button onClick={() => updateComment(c.id)} className="text-[10px] font-bold text-orange-500">완료</button>
+                                                <button onClick={() => setEditingCommentId(null)} className="text-[10px] font-bold text-stone-400">취소</button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-stone-600 text-sm leading-snug">{c.content}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* 댓글 입력창 */}
+                            <div className="flex gap-3 bg-white p-2 rounded-2xl border border-stone-200 focus-within:ring-2 focus-within:ring-orange-200 transition-all shadow-sm">
+                                <input 
+                                    value={commentInput} 
+                                    onChange={(e) => setCommentInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                                    placeholder="댓글을 남겨보세요... (Enter로 등록)" 
+                                    className="flex-1 bg-transparent border-none text-sm outline-none px-4" 
+                                />
+                                <button onClick={handleCommentSubmit} className="bg-orange-400 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-orange-500 shadow-md">등록</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
