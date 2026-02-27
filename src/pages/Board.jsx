@@ -246,7 +246,7 @@ function Board() {
                                         </div>
                                     ) : (
                                         <div className="relative rounded-xl overflow-hidden border-2 border-orange-200 bg-white p-2">
-                                            <img src={block.preview || block.value} className="max-w-2xl w-full max-h-[400px] object-contain mx-auto rounded-2xl" alt="preview" />
+                                            <img src={block.preview || block.value} className="max-w-[512px] max-h-[512px] w-auto h-auto object-contain mx-auto rounded-2xl shadow-sm" alt="preview" />
                                         </div>
                                     )}
                                     <button onClick={() => removeBlock(block.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow-md z-10">✕</button>
@@ -300,7 +300,7 @@ function Board() {
                             {JSON.parse(selectedPost.content).map((b, i) => (
                                 b.type === 'text' 
                                 ? <div key={i} className="post-content-area text-stone-700 text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: b.value }} />
-                                : <img key={i} src={b.value} className="w-full h-auto rounded-3xl border border-stone-100 shadow-sm mx-auto" alt="post" />
+                                : <img key={i} src={b.value} className="max-w-[400px] max-h-[400px] w-auto h-auto object-contain rounded-[2rem] shadow-sm border border-stone-100 mx-auto" alt="post" />
                             ))}
                         </div>
 
