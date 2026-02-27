@@ -195,7 +195,7 @@ function Sidebar() {
                     </nav>
 
                     {/* 2. 하단: 팀 멤버 (독립 스크롤) */}
-                    <div className="flex-1 border-t border-stone-100 pt-6 flex flex-col min-h-0 text-left">
+                    <div className="flex-1 border-t border-stone-300 pt-6 flex flex-col min-h-0 text-left">
                         <h3 className="text-sm font-bold text-stone-400 mb-4 px-2 shrink-0">팀 멤버</h3>
                         <div className="overflow-y-auto flex flex-col gap-4 custom-scrollbar pr-2 flex-1">
                             {members.map((m) => (

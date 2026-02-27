@@ -16,6 +16,8 @@ import Profile from './pages/Profile'; // [추가] 프로필 페이지 불러오
 import Trash from './components/Trash'; // [추가] 휴지통 페이지 불러오기
 import LogRecord from './components/Logrecord'; // [추가] 로그 페이지 불러오기
 
+import Board from './components/Board'; // [추가] 게시판 페이지 불러오기
+
 function App() {
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
 	const [session, setSession] = useState(null);
@@ -121,6 +123,7 @@ function App() {
 					{/* 여기가 바로 주소에 따라 화면이 갈아끼워지는 곳! */}
 					<Routes>
 						<Route path="/" element={<Dashboard tasks={tasks} addTask={addTask} setTasks={setTasks} />} />
+						<Route path="/board" element={<Board />} />
 						{/* 🟢 1. 태스크 캘린더: 마일스톤이 아닌 것(!t.is_milestone)만 걸러서 전달 */}
                         <Route path="/calendar" element={<Calendar tasks={tasks.filter(t => !t.is_milestone && !t.is_deleted)} title="태스크 캘린더" />} />
                         {/* 🟢 2. 마일스톤 캘린더: 마일스톤인 것(t.is_milestone)만 걸러서 전달 */}
