@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import JoditEditor from 'jodit-react';
+import { useMemo } from 'react'; // 설정을 위해 필요해
 
 function Board() {
     // 🟢 viewMode: 'list' (목록), 'write' (글쓰기/수정), 'detail' (상세보기)
@@ -20,6 +20,16 @@ function Board() {
     const [commentInput, setCommentInput] = useState('');
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editCommentValue, setEditCommentValue] = useState('');
+
+    const editorConfig = useMemo(() => ({
+        readonly: false,
+        placeholder: '내용을 입력하세요...',
+        minHeight: 300,
+        buttons: ['bold', 'italic', 'underline', 'strikethrough', '|', 'fontsize', 'paragraph', 'brush', '|', 'align', 'ul', 'ol', '|', 'undo', 'redo'],
+        showCharsCounter: false,
+        showWordsCounter: false,
+        toolbarAdaptive: false // 툴바가 지멋대로 줄어들지 않게 고정!
+    }), []);
 
     useEffect(() => {
         fetchPosts();
@@ -108,6 +118,8 @@ function Board() {
         }
 
         if (!error) {
+            setEditingPostId(null); // 수정 중이던 ID 초기화
+            setBlocks([{ id: Date.now(), type: 'text', value: '' }]); // 블록 초기화
             setViewMode('list');
             fetchPosts();
         }
@@ -165,6 +177,13 @@ function Board() {
     const removeBlock = (id) => setBlocks(blocks.filter(b => b.id !== id));
 
     return (
+        <style>{`
+            .post-content-area h1 { font-size: 2.5rem !important; font-weight: 900; margin-bottom: 1rem; }
+            .post-content-area h2 { font-size: 2rem !important; font-weight: 800; margin-bottom: 0.8rem; }
+            .post-content-area h3 { font-size: 1.5rem !important; font-weight: 700; }
+            .post-content-area p { margin-bottom: 0.5rem; }
+            .post-content-area span[style*="font-size"] { line-height: 1.2; }
+        `}</style>,
         <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800 overflow-hidden">
             {/* 상단 헤더 */}
             <div className="flex justify-between items-center mb-8 shrink-0">
@@ -218,15 +237,11 @@ function Board() {
                             {blocks.map((block) => (
                                 <div key={block.id} className="relative group">
                                     {block.type === 'text' ? (
-                                        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-stone-200">
-                                            <CKEditor
-                                                editor={ ClassicEditor }
-                                                data={block.value}
-                                                config={{ 
-                                                    placeholder: "내용을 입력하세요...",
-                                                    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo'] 
-                                                }}
-                                                onChange={ ( event, editor ) => { updateBlock(block.id, editor.getData()); } }
+                                        <div className="jodit-wrapper border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+                                            <JoditEditor 
+                                                value={block.value} 
+                                                config={editorConfig} 
+                                                onBlur={(newContent) => updateBlock(block.id, newContent)} 
                                             />
                                         </div>
                                     ) : (
@@ -284,7 +299,7 @@ function Board() {
                         <div className="flex flex-col gap-6 mb-16">
                             {JSON.parse(selectedPost.content).map((b, i) => (
                                 b.type === 'text' 
-                                ? <div key={i} className="text-stone-600 text-lg leading-relaxed ck-content" dangerouslySetInnerHTML={{ __html: b.value }} />
+                                ? <div key={i} className="post-content-area text-stone-700 text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: b.value }} />
                                 : <img key={i} src={b.value} className="w-full h-auto rounded-3xl border border-stone-100 shadow-sm mx-auto" alt="post" />
                             ))}
                         </div>
