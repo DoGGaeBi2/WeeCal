@@ -69,7 +69,13 @@ function Board() {
         setEditingPostId(post.id);
         setNewTitle(post.title);
         try {
-            setBlocks(JSON.parse(post.content));
+            const parsedBlocks = JSON.parse(post.content);
+            // 🟢 핵심 수정: 불러온 블록들에 고유한 ID(이름표)를 강제로 달아줌!
+            const blocksWithId = parsedBlocks.map((b, i) => ({
+                ...b,
+                id: Date.now() + i 
+            }));
+            setBlocks(blocksWithId);
         } catch (e) {
             setBlocks([{ id: Date.now(), type: 'text', value: post.content }]);
         }
@@ -241,7 +247,7 @@ function Board() {
                                             <JoditEditor 
                                                 value={block.value} 
                                                 config={editorConfig} 
-                                                onBlur={(newContent) => updateBlock(block.id, newContent)} 
+                                                onChange={(newContent) => updateBlock(block.id, newContent)} 
                                             />
                                         </div>
                                     ) : (
