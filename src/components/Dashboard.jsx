@@ -454,11 +454,11 @@ function Dashboard({ tasks, addTask, setTasks }) {
           
           {/* 위젯 1: 이번 주 일정 */}
           <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm flex-[1] flex flex-col min-h-0">
-            <h3 className="font-bold text-lg mb-6 text-stone-800 shrink-0">이번 주 요약</h3>
+            <h3>이번 주 {viewMode === 'task' ? '태스크' : '마일스톤'} 요약</h3>
             <div className="flex-1 overflow-y-auto pr-1">
               <div className="flex flex-col gap-4 text-sm font-medium text-stone-600">
                 {/* 🟢 1. 여기에 && !t.is_deleted 추가! */}
-                {tasks.filter(t => t.isWeekly && !t.completed && !t.is_deleted).map(task => (
+                {tasks.filter(t => t.isWeekly && !t.completed && !t.is_deleted && (viewMode === 'milestone' ? t.is_milestone : !t.is_milestone)).map(task => (
                   <div key={task.id} className="flex items-start gap-3 text-left">
                     <span className={`w-3 h-3 mt-1.5 rounded-full shrink-0 bg-${task.color === 'stone' ? 'stone-300' : task.color + '-400'}`}></span>
                     <p><span className="font-bold text-stone-800">{task.date}</span><br />{task.title}</p>
@@ -473,7 +473,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
             <div className="flex justify-between items-center mb-6 shrink-0">
                             <h3 className="font-bold text-lg text-stone-800">
                                 {/* 🟢 동적으로 이번 달 / 다음 달 텍스트 출력 */}
-                                [{currentMonth === thisMonthNum ? '이번 달' : '다음 달'}] 요약
+                                [{currentMonth === thisMonthNum ? '이번 달' : '다음 달'}] {viewMode === 'task' ? '태스크' : '마일스톤'} 요약
                             </h3>
                             <div className="flex gap-1">
                                 {/* 🟢 왼쪽 버튼은 '이번 달'로 고정 */}
@@ -500,7 +500,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
               <div className="flex flex-col gap-4 text-sm font-medium text-stone-600 text-left">
                 {/* 🟢 2. 여기에도 && !t.is_deleted 추가! */}
                 {tasks
-                  .filter(t => t.isMonthly && !t.completed && !t.is_deleted && parseInt(t.date.split('/')[0]) === currentMonth)
+                  .filter(t => t.isMonthly && !t.completed && !t.is_deleted && parseInt(t.date.split('/')[0]) === currentMonth && (viewMode === 'milestone' ? t.is_milestone : !t.is_milestone))
                   .map(task => (
                     <div key={task.id} className="flex items-start gap-3">
                       <span className={`w-3 h-3 mt-1.5 rounded-full shrink-0 bg-${task.color === 'stone' ? 'stone-300' : task.color + '-400'}`}></span>
