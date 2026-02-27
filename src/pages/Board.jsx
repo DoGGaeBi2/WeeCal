@@ -183,6 +183,7 @@ function Board() {
     const removeBlock = (id) => setBlocks(blocks.filter(b => b.id !== id));
 
     return (
+        <>
         <style>{`
             .post-content-area h1 { font-size: 2.5rem !important; font-weight: 900; margin-bottom: 1rem; }
             .post-content-area h2 { font-size: 2rem !important; font-weight: 800; margin-bottom: 0.8rem; }
@@ -360,6 +361,7 @@ function Board() {
                 )}
             </div>
         </div>
+        </>
     );
 }
 
