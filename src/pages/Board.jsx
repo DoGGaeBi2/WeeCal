@@ -157,7 +157,11 @@ function Board() {
 
                                 <div className="p-6 md:p-8">
                                     <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-500">{post.author_name[0]}</div>
+                                        <img 
+                                            src={post.author?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} 
+                                            className="w-10 h-10 rounded-full bg-stone-100 shrink-0 object-cover" 
+                                            alt="author" 
+                                        />
                                         <div>
                                             <p className="font-bold text-stone-800 text-sm">{post.author_name}</p>
                                             <p className="text-[10px] text-stone-400">{new Date(post.created_at).toLocaleString()}</p>
