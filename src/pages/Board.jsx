@@ -246,7 +246,7 @@ function Board() {
                                         </div>
                                     ) : (
                                         <div className="relative rounded-xl overflow-hidden border-2 border-orange-200 bg-white p-2">
-                                            <img src={block.preview || block.value} className="w-full h-auto max-h-96 object-contain mx-auto" alt="preview" />
+                                            <img src={block.preview || block.value} className="max-w-2xl w-full max-h-[400px] object-contain mx-auto rounded-2xl" alt="preview" />
                                         </div>
                                     )}
                                     <button onClick={() => removeBlock(block.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow-md z-10">✕</button>
