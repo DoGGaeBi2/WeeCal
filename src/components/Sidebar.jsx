@@ -171,149 +171,142 @@ function Sidebar() {
 	const navStyle = ({ isActive }) => isActive ? "text-orange-500 font-bold bg-orange-50 px-4 py-3 rounded-2xl block" : "px-4 py-2 hover:text-stone-800 transition-colors block";
 
 	return (
-		<>
-			<aside className="w-72 bg-white rounded-[2rem] shadow-sm p-8 flex flex-col h-full overflow-hidden shrink-0">
-				<div className="mb-10 flex flex-col gap-2 shrink-0 text-left">
-					<h1 className="text-3xl font-extrabold text-stone-800 tracking-tight">Wee<span className="text-orange-400">Cal</span></h1>
-					<div className="bg-stone-50 rounded-xl p-3 border border-stone-100 shadow-sm flex flex-col mt-1">
-						<span className="text-xs text-stone-400 font-medium mb-0.5">{currentTime.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</span>
-						<span className="text-sm text-stone-700 font-bold tracking-wider">{currentTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-					</div>
-				</div>
+        <>
+            <aside className="w-72 bg-white rounded-[2rem] shadow-sm p-8 flex flex-col h-full overflow-hidden shrink-0">
+                <div className="mb-8 flex flex-col gap-2 shrink-0 text-left">
+                    <h1 className="text-3xl font-extrabold text-stone-800 tracking-tight">Wee<span className="text-orange-400">Cal</span></h1>
+                    <div className="bg-stone-50 rounded-xl p-3 border border-stone-100 shadow-sm flex flex-col mt-1">
+                        <span className="text-xs text-stone-400 font-medium mb-0.5">{currentTime.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</span>
+                        <span className="text-sm text-stone-700 font-bold tracking-wider">{currentTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    </div>
+                </div>
 
-				<nav className="flex flex-col gap-6 text-stone-500 font-medium mb-8 text-left">
-					<NavLink to="/" className={navStyle}>대시보드</NavLink>
-					<NavLink to="/calendar" className={navStyle}>캘린더(Task)</NavLink>
-					<NavLink to="/milestone" className={navStyle}>캘린더(Milestone)</NavLink>
-					<NavLink to="/log" className={navStyle}>작업 로그</NavLink>
-					<NavLink to="/trash" className={navStyle}>휴지통</NavLink>
-				</nav>
+                {/* 🟢 중앙 영역을 flex-1로 잡고, 위아래 절반씩 나눠서 독립 스크롤 적용! */}
+                <div className="flex flex-col flex-1 min-h-0 gap-6">
+                    
+                    {/* 1. 상단: 메뉴 네비게이션 (독립 스크롤) */}
+                    <nav className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 text-stone-500 font-medium pr-2 text-left">
+                        <NavLink to="/" className={navStyle}>대시보드</NavLink>
+                        <NavLink to="/calendar" className={navStyle}>캘린더(Task)</NavLink>
+                        <NavLink to="/milestone" className={navStyle}>캘린더(Milestone)</NavLink>
+                        <NavLink to="/board" className={navStyle}>게시판</NavLink> {/* 🟢 게시판 메뉴 추가! */}
+                        <NavLink to="/log" className={navStyle}>작업 로그</NavLink>
+                        <NavLink to="/trash" className={navStyle}>휴지통</NavLink>
+                    </nav>
 
-				<div className="mt-auto pt-6 border-t border-stone-100 flex flex-col min-h-0 text-left">
-					<h3 className="text-sm font-bold text-stone-400 mb-4 px-2">팀 멤버</h3>
-					<div className="overflow-y-auto flex flex-col gap-4 custom-scrollbar pr-2">
-						{members.map((m) => ( // 여기서 m이 정의되는 거야!
-							<div 
-								key={m.id} 
-								onClick={() => handleMemberClick(m)} 
-								className="flex items-center gap-3 px-2 cursor-pointer hover:bg-stone-50 p-2 rounded-xl transition-all"
-							>
-								<img 
-									src={m.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} 
-									className="w-9 h-9 rounded-full bg-stone-100 shrink-0" 
-									alt="member" 
-								/>
-								<div className="overflow-hidden flex-1">
-									<div className="flex items-center gap-2">
-										<p className="text-sm font-bold text-stone-800 truncate">
-											{m.username || '익명'} 
-											{m.id === myId && <span className="text-orange-400 text-xs ml-1 font-medium">(나!)</span>}
-										</p>
-										
-										{/* [알림 점] unreadUsers를 확인할 때 반드시 이 map 함수 안에서(m이 존재할 때) 실행해야 해! */}
-										{unreadUsers.has(m.id) && (
-											<span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-										)}
-									</div>
-									<p className="text-[10px] text-stone-400 truncate">{m.intro || '한줄 소개가 없습니다.'}</p>
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
-			</aside>
+                    {/* 2. 하단: 팀 멤버 (독립 스크롤) */}
+                    <div className="flex-1 border-t border-stone-100 pt-6 flex flex-col min-h-0 text-left">
+                        <h3 className="text-sm font-bold text-stone-400 mb-4 px-2 shrink-0">팀 멤버</h3>
+                        <div className="overflow-y-auto flex flex-col gap-4 custom-scrollbar pr-2 flex-1">
+                            {members.map((m) => (
+                                <div 
+                                    key={m.id} 
+                                    onClick={() => handleMemberClick(m)} 
+                                    className="flex items-center gap-3 px-2 cursor-pointer hover:bg-stone-50 p-2 rounded-xl transition-all"
+                                >
+                                    <img 
+                                        src={m.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} 
+                                        className="w-9 h-9 rounded-full bg-stone-100 shrink-0" 
+                                        alt="member" 
+                                    />
+                                    <div className="overflow-hidden flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold text-stone-800 truncate">
+                                                {m.username || '익명'} 
+                                                {m.id === myId && <span className="text-orange-400 text-xs ml-1 font-medium">(나!)</span>}
+                                            </p>
+                                            
+                                            {unreadUsers.has(m.id) && (
+                                                <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-stone-400 truncate">{m.intro || '한줄 소개가 없습니다.'}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </aside>
 
-			{/* 멤버 상세 및 채팅 팝업 */}
-			{isModalOpen && (selectedMember || selectedTask) && (
-				<div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-					<div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl flex flex-col gap-5">
-						<div className="flex items-center gap-4 border-b border-stone-100 pb-4">
-							{/* 🟢 태스크 채팅일 때와 멤버 채팅일 때 헤더를 다르게 표시! */}
-							{selectedTask ? (
-								<div className="text-left">
-									<span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md mb-1 inline-block tracking-tighter">TASK CHAT</span>
-									<h4 className="text-lg font-bold text-stone-800 truncate">{selectedTask.title}</h4>
-									<p className="text-xs text-stone-400">이 태스크의 팀원들과 대화 중입니다.</p>
-								</div>
-							) : (
-								<>
-									<img src={selectedMember?.avatar_url} className="w-16 h-16 rounded-full bg-orange-50" alt="profile" />
-									<div className="text-left">
-										<h4 className="text-lg font-bold text-stone-800">{selectedMember?.username || '익명 멤버'}</h4>
-										<p className="text-xs text-stone-400">{selectedMember?.intro}</p>
-									</div>
-								</>
-							)}
-							<button onClick={() => setIsModalOpen(false)} className="ml-auto text-stone-300 hover:text-stone-500 cursor-pointer text-xl">✕</button>
-						</div>
+            {/* 멤버 상세 및 채팅 팝업 (기존 유지) */}
+            {isModalOpen && (selectedMember || selectedTask) && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl flex flex-col gap-5">
+                        <div className="flex items-center gap-4 border-b border-stone-100 pb-4">
+                            {selectedTask ? (
+                                <div className="text-left">
+                                    <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md mb-1 inline-block tracking-tighter">TASK CHAT</span>
+                                    <h4 className="text-lg font-bold text-stone-800 truncate">{selectedTask.title}</h4>
+                                    <p className="text-xs text-stone-400">이 태스크의 팀원들과 대화 중입니다.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <img src={selectedMember?.avatar_url} className="w-16 h-16 rounded-full bg-orange-50" alt="profile" />
+                                    <div className="text-left">
+                                        <h4 className="text-lg font-bold text-stone-800">{selectedMember?.username || '익명 멤버'}</h4>
+                                        <p className="text-xs text-stone-400">{selectedMember?.intro}</p>
+                                    </div>
+                                </>
+                            )}
+                            <button onClick={() => setIsModalOpen(false)} className="ml-auto text-stone-300 hover:text-stone-500 cursor-pointer text-xl">✕</button>
+                        </div>
 
-						{/* 채팅창 영역 */}
-						<div className="bg-stone-50 rounded-2xl h-64 overflow-hidden flex flex-col">
-							<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
-								{chatMessages.length > 0 ? chatMessages.map((msg, i) => {
-									// 날짜 구분선 로직
-									const currentDate = formatMsgDate(msg.created_at);
-									const prevDate = i > 0 ? formatMsgDate(chatMessages[i - 1].created_at) : null;
-									const showDateLine = currentDate !== prevDate;
+                        {/* 채팅창 영역 */}
+                        <div className="bg-stone-50 rounded-2xl h-64 overflow-hidden flex flex-col">
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+                                {chatMessages.length > 0 ? chatMessages.map((msg, i) => {
+                                    const currentDate = formatMsgDate(msg.created_at);
+                                    const prevDate = i > 0 ? formatMsgDate(chatMessages[i - 1].created_at) : null;
+                                    const showDateLine = currentDate !== prevDate;
 
-									// 🟢 [핵심 추가] 메시지 보낸 사람의 정보 찾기 (팀원 목록에서 ID로 검색)
-									const sender = members.find(m => m.id === msg.sender_id);
-									const senderName = sender ? sender.username : '알 수 없음';
-									const senderAvatar = sender?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
+                                    const sender = members.find(m => m.id === msg.sender_id);
+                                    const senderName = sender ? sender.username : '알 수 없음';
+                                    const senderAvatar = sender?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
 
-									return (
-										<React.Fragment key={msg.id || i}>
-											{showDateLine && (
-												<div className="flex justify-center my-4"><span className="bg-stone-200/50 text-stone-500 text-[10px] px-3 py-1 rounded-full font-bold">{currentDate}</span></div>
-											)}
-											
-											<div className={`flex flex-col ${msg.sender_id === myId ? 'items-end' : 'items-start'} mb-2`}>
-												
-												{/* 🟢 내 메시지일 때 (오른쪽 정렬, 기존과 동일) */}
-												{msg.sender_id === myId ? (
-													<div className="flex items-end gap-1.5 max-w-[85%]">
-														<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
-														<div className="bg-orange-400 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-md">
-															{msg.content}
-														</div>
-													</div>
-												) : (
-													/* 🟢 상대방 메시지일 때 (왼쪽 정렬, 프사 + 닉네임 추가!) */
-													<div className="flex items-start gap-2 max-w-[85%]">
-														{/* 프사 */}
-														<img src={senderAvatar} className="w-8 h-8 rounded-full bg-stone-100 shrink-0 mt-0.5" alt="profile" />
-														
-														<div className="flex flex-col gap-1">
-															{/* 닉네임 */}
-															<span className="text-[10px] font-bold text-stone-500 pl-1">{senderName}</span>
-															
-															{/* 말풍선과 시간 */}
-															<div className="flex items-end gap-1.5">
-																<div className="bg-white text-stone-700 p-3 rounded-2xl rounded-tl-none border border-stone-100 text-sm shadow-sm">
-																	{msg.content}
-																</div>
-																<span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
-															</div>
-														</div>
-													</div>
-												)}
-
-											</div>
-										</React.Fragment>
-									);
-								}) : <p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>}
-
-							</div>
-							<form onSubmit={sendMessage} className="p-3 bg-white border-t border-stone-100 flex gap-2">
-								<input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="메시지 입력..." className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-300" />
-								<button type="submit" className="bg-orange-400 text-white px-4 py-2 rounded-xl font-bold text-sm cursor-pointer hover:bg-orange-500">전송</button>
-							</form>
-						</div>
-					</div>
-				</div>
-			)}
-		</>
-	);
+                                    return (
+                                        <React.Fragment key={msg.id || i}>
+                                            {showDateLine && (
+                                                <div className="flex justify-center my-4"><span className="bg-stone-200/50 text-stone-500 text-[10px] px-3 py-1 rounded-full font-bold">{currentDate}</span></div>
+                                            )}
+                                            
+                                            <div className={`flex flex-col ${msg.sender_id === myId ? 'items-end' : 'items-start'} mb-2`}>
+                                                {msg.sender_id === myId ? (
+                                                    <div className="flex items-end gap-1.5 max-w-[85%]">
+                                                        <span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
+                                                        <div className="bg-orange-400 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-md">
+                                                            {msg.content}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-start gap-2 max-w-[85%]">
+                                                        <img src={senderAvatar} className="w-8 h-8 rounded-full bg-stone-100 shrink-0 mt-0.5" alt="profile" />
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-[10px] font-bold text-stone-500 pl-1">{senderName}</span>
+                                                            <div className="flex items-end gap-1.5">
+                                                                <div className="bg-white text-stone-700 p-3 rounded-2xl rounded-tl-none border border-stone-100 text-sm shadow-sm">
+                                                                    {msg.content}
+                                                                </div>
+                                                                <span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                }) : <p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>}
+                            </div>
+                            <form onSubmit={sendMessage} className="p-3 bg-white border-t border-stone-100 flex gap-2">
+                                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="메시지 입력..." className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-300" />
+                                <button type="submit" className="bg-orange-400 text-white px-4 py-2 rounded-xl font-bold text-sm cursor-pointer hover:bg-orange-500">전송</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }
 
 export default Sidebar;
