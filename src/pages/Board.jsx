@@ -18,7 +18,10 @@ function Board() {
     }, []);
 
     async function fetchPosts() {
-        const { data } = await supabase.from('posts').select('*, comments(*)').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('posts')
+            .select('*, comments(*), author:profiles(avatar_url)') 
+            .order('created_at', { ascending: false });
         if (data) setPosts(data);
     }
 
