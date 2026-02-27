@@ -179,7 +179,7 @@ function Board() {
         const file = e.target.files[0];
         if (file) setBlocks([...blocks, { id: Date.now(), type: 'image', file, preview: URL.createObjectURL(file) }]);
     };
-    const updateBlock = (id, newValue) => setBlocks(blocks.map(b => b.id === id ? { ...b, value: newValue } : b));
+    const updateBlock = (id, newValue) => setBlocks(prev => prev.map(b => b.id === id ? { ...b, value: newValue } : b));
     const removeBlock = (id) => setBlocks(blocks.filter(b => b.id !== id));
 
     return (
