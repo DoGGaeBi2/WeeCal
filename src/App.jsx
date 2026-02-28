@@ -18,6 +18,8 @@ import LogRecord from './components/Logrecord'; // [추가] 로그 페이지 불
 
 import Board from './pages/Board'; // [추가] 게시판 페이지 불러오기
 
+import TimeCalculator from './components/TimeCalculator'
+
 function App() {
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
 	const [session, setSession] = useState(null);
@@ -128,6 +130,7 @@ function App() {
                         <Route path="/calendar" element={<Calendar tasks={tasks.filter(t => !t.is_milestone && !t.is_deleted)} title="태스크 캘린더" />} />
                         {/* 🟢 2. 마일스톤 캘린더: 마일스톤인 것(t.is_milestone)만 걸러서 전달 */}
                         <Route path="/milestone" element={<Milestone tasks={tasks.filter(t => t.is_milestone && !t.is_deleted)} />} />
+						<Route path="/time" element={<TimeCalculator />} />
 						<Route path="/log" element={<LogRecord />} />
 						<Route path="/trash" element={<Trash tasks={tasks} setTasks={setTasks} />} />
            				{/* 🟢 수정: Profile에 필요한 모든 권한과 데이터를 넘겨줘! */}

@@ -190,6 +190,7 @@ function Sidebar() {
                         <NavLink to="/calendar" className={navStyle}>캘린더(Task)</NavLink>
                         <NavLink to="/milestone" className={navStyle}>캘린더(Milestone)</NavLink>
                         <NavLink to="/board" className={navStyle}>게시판</NavLink> {/* 🟢 게시판 메뉴 추가! */}
+                        <NavLink to="/time" className={navStyle}>세계 시간</NavLink>
                         <NavLink to="/log" className={navStyle}>작업 로그</NavLink>
                         <NavLink to="/trash" className={navStyle}>휴지통</NavLink>
                     </nav>
