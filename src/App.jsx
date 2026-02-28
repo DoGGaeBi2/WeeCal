@@ -20,6 +20,8 @@ import Board from './pages/Board'; // [추가] 게시판 페이지 불러오기
 
 import TimeCalculator from './components/TimeCalculator'
 
+import Routine from './pages/Routine';
+
 function App() {
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
 	const [session, setSession] = useState(null);
@@ -130,6 +132,8 @@ function App() {
                         <Route path="/calendar" element={<Calendar tasks={tasks.filter(t => !t.is_milestone && !t.is_deleted)} title="태스크 캘린더" />} />
                         {/* 🟢 2. 마일스톤 캘린더: 마일스톤인 것(t.is_milestone)만 걸러서 전달 */}
                         <Route path="/milestone" element={<Milestone tasks={tasks.filter(t => t.is_milestone && !t.is_deleted)} />} />
+						<Route path="/weekly" element={<Routine type="weekly" title="주간 루틴 업무" columns={['월', '화', '수', '목', '금']} />} />
+						<Route path="/monthly" element={<Routine type="monthly" title="월간 루틴 업무" columns={['1주차', '2주차', '3주차', '4주차', '5주차']} />} />
 						<Route path="/time" element={<TimeCalculator />} />
 						<Route path="/log" element={<LogRecord />} />
 						<Route path="/trash" element={<Trash tasks={tasks} setTasks={setTasks} />} />
