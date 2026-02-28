@@ -7,6 +7,9 @@ function Routine({ type, title, columns }) {
     const [newTaskContent, setNewTaskContent] = useState('');
     const [activeColumn, setActiveColumn] = useState(columns[0]);
 
+    const [editingRoutine, setEditingRoutine] = useState(null);
+    const [editContent, setEditContent] = useState('');
+
     useEffect(() => {
         fetchRoutines();
     }, [type]);
@@ -39,12 +42,25 @@ function Routine({ type, title, columns }) {
         setRoutines(prev => prev.filter(r => r.id !== id));
     };
 
-    // 🟢 [추가] 개별 루틴 수정 함수
-    const editRoutine = async (routine) => {
-        const newContent = window.prompt("루틴 내용을 수정해볼까?", routine.content);
-        if (newContent && newContent !== routine.content) {
-            await supabase.from('routines').update({ content: newContent }).eq('id', routine.id);
-            setRoutines(prev => prev.map(r => r.id === routine.id ? { ...r, content: newContent } : r));
+    // 🟢 [교체] 수정 버튼 눌렀을 때 팝업을 여는 함수
+    const editRoutine = (routine) => {
+        setEditingRoutine(routine);
+        setEditContent(routine.content);
+    };
+
+    // 🟢 [추가] 팝업에서 '저장' 눌렀을 때 DB에 반영하는 함수
+    const handleEditRoutineSubmit = async (e) => {
+        e.preventDefault();
+        if (!editContent.trim()) return alert("내용을 입력해 줘!");
+
+        const { error } = await supabase
+            .from('routines')
+            .update({ content: editContent })
+            .eq('id', editingRoutine.id);
+
+        if (!error) {
+            setRoutines(prev => prev.map(r => r.id === editingRoutine.id ? { ...r, content: editContent } : r));
+            setEditingRoutine(null); // 팝업 닫기
         }
     };
 
@@ -58,7 +74,7 @@ function Routine({ type, title, columns }) {
 
     return (
         <div className="flex flex-col gap-6 h-full text-stone-800">
-            {/* 상단 헤더 및 입력창 */}
+            {/* 1. 상단 헤더 및 입력창 */}
             <div className="bg-white p-6 rounded-[2rem] shadow-sm flex items-center justify-between shrink-0">
                 <h2 className="text-2xl font-bold">{title}</h2>
                 <form onSubmit={addRoutine} className="flex gap-2 bg-stone-50 p-1.5 rounded-xl border border-stone-200">
@@ -70,13 +86,12 @@ function Routine({ type, title, columns }) {
                 </form>
             </div>
 
-            {/* 도안대로 기둥(컬럼) 세우기 */}
+            {/* 2. 도안대로 기둥(컬럼) 세우기 */}
             <div className={`grid grid-cols-${columns.length} gap-4 flex-1 min-h-0`}>
                 {columns.map(col => (
                     <div key={col} className="bg-white p-5 rounded-[2rem] shadow-sm flex flex-col border border-stone-100">
                         <div className="flex justify-between items-center mb-4 pb-3 border-b border-stone-100 shrink-0">
                             <h3 className="font-extrabold text-lg">{col}</h3>
-                            {/* 🟢 초기화 글씨 대신 쓸 예쁜 리프레시 버튼 */}
                             <button onClick={() => resetColumn(col)} title={`${col} 초기화`} className="p-1.5 bg-stone-50 text-stone-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors">
                                 <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                             </button>
@@ -86,7 +101,6 @@ function Routine({ type, title, columns }) {
                             {routines.filter(r => r.period === col).map(routine => (
                                 <div 
                                     key={routine.id} 
-
                                     className={`relative group flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                         routine.is_completed ? 'bg-stone-50 border-transparent opacity-50' : 'bg-white border-stone-200 hover:border-orange-300 shadow-sm'
                                     }`}
@@ -97,7 +111,6 @@ function Routine({ type, title, columns }) {
                                         {routine.content}
                                     </span>
 
-                                    {/* 🟢 호버했을 때만 나타나는 수정/삭제 버튼 */}
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/90 p-1 rounded-lg shadow-sm border border-stone-100">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); editRoutine(routine); }} 
@@ -114,7 +127,30 @@ function Routine({ type, title, columns }) {
                     </div>
                 ))}
             </div>
-        </div>
+
+            {/* 🟢 3. [여기가 포인트!] 마지막 </div> 닫기 바로 직전에 팝업창을 넣어줘 */}
+            {editingRoutine && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl flex flex-col gap-5 text-left">
+                        <h3 className="text-xl font-bold text-stone-800">루틴 수정하기</h3>
+                        <form onSubmit={handleEditRoutineSubmit} className="flex flex-col gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-stone-400 mb-2">루틴 내용</label>
+                                <textarea 
+                                    value={editContent} 
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-300 outline-none h-32 resize-none text-sm text-stone-700 font-medium"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-2">
+                                <button type="button" onClick={() => setEditingRoutine(null)} className="px-5 py-2.5 rounded-xl font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer text-sm">취소</button>
+                                <button type="submit" className="px-5 py-2.5 rounded-xl font-bold text-white bg-orange-400 hover:bg-orange-500 shadow-md transition-colors cursor-pointer text-sm">저장하기</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div> 
     );
 }
 
