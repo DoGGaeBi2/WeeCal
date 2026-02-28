@@ -265,9 +265,9 @@ function Sidebar() {
             {/* 멤버 상세 및 채팅 팝업 (기존 유지) */}
             {isModalOpen && (selectedMember || selectedTask) && (
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl flex flex-col gap-5">
-                        <div className="flex items-center gap-4 border-b border-stone-100 pb-4">
-                            {selectedTask ? (
+                    <div className="bg-white rounded-[3.5rem] p-12 w-[90%] max-w-[1400px] h-[85svh] shadow-2xl flex flex-col gap-6">
+                        <div className="flex items-center gap-6 border-b border-stone-100 pb-6 shrink-0">
+                             {selectedTask ? (
                                 <div className="text-left">
                                     <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md mb-1 inline-block tracking-tighter">TASK CHAT</span>
                                     <h4 className="text-lg font-bold text-stone-800 truncate">{selectedTask.title}</h4>
@@ -275,19 +275,19 @@ function Sidebar() {
                                 </div>
                             ) : (
                                 <>
-                                    <img src={selectedMember?.avatar_url} className="w-16 h-16 rounded-full bg-orange-50" alt="profile" />
+                                    <img src={selectedMember?.avatar_url} className="w-20 h-20 rounded-full bg-orange-50 shrink-0" alt="profile" />
                                     <div className="text-left">
-                                        <h4 className="text-lg font-bold text-stone-800">{selectedMember?.username || '익명 멤버'}</h4>
-                                        <p className="text-xs text-stone-400">{selectedMember?.intro}</p>
+                                        <h4 className="text-2xl font-bold text-stone-800">{selectedMember?.username || '익명 멤버'}</h4>                                      
+                                        <p className="text-sm text-stone-400 mt-1">{selectedMember?.intro}</p>
                                     </div>
                                 </>
                             )}
-                            <button onClick={() => setIsModalOpen(false)} className="ml-auto text-stone-300 hover:text-stone-500 cursor-pointer text-xl">✕</button>
+                            <button onClick={() => setIsModalOpen(false)} className="ml-auto text-stone-300 hover:text-stone-500 cursor-pointer text-2xl">✕</button>
                         </div>
 
                         {/* 채팅창 영역 */}
-                        <div className="bg-stone-50 rounded-2xl h-64 overflow-hidden flex flex-col">
-                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+                        <div className="bg-stone-50 rounded-2xl flex-1 overflow-hidden flex flex-col min-h-0">
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar">
                                 {chatMessages.length > 0 ? chatMessages.map((msg, i) => {
                                     const currentDate = formatMsgDate(msg.created_at);
                                     const prevDate = i > 0 ? formatMsgDate(chatMessages[i - 1].created_at) : null;
@@ -315,7 +315,13 @@ function Sidebar() {
                                                         <div className={`p-3 rounded-2xl rounded-tr-none text-sm shadow-md ${isImage ? 'bg-transparent p-0 shadow-none' : 'bg-orange-400 text-white'}`}>
                                                             {/* 🟢 내가 보낸 메시지 이미지 처리 */}
                                                             {isImage ? (
-                                                                <img src={imageUrl} alt="chat-image" className="max-w-[200px] rounded-xl cursor-pointer hover:opacity-90 border border-stone-100 shadow-sm" onClick={() => window.open(imageUrl, '_blank')} />
+                                                                <img 
+                                                                    src={imageUrl} 
+                                                                    alt="chat-image" 
+                                                                    // ❌ 기존 max-w-[200px] -> ✅ 수정 max-w-[350px] (사진도 크게!)
+                                                                    className="max-w-[350px] rounded-xl cursor-pointer hover:opacity-90 border border-stone-100 shadow-sm" 
+                                                                    onClick={() => window.open(imageUrl, '_blank')} // 누르면 원본 보기
+                                                                />
                                                             ) : (
                                                                 msg.content
                                                             )}
@@ -330,7 +336,13 @@ function Sidebar() {
                                                                 <div className={`text-stone-700 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm ${isImage ? 'bg-transparent p-0 shadow-none border-none' : 'bg-white border border-stone-100'}`}>
                                                                     {/* 🟢 남이 보낸 메시지 이미지 처리 */}
                                                                     {isImage ? (
-                                                                        <img src={imageUrl} alt="chat-image" className="max-w-[200px] rounded-xl cursor-pointer hover:opacity-90 border border-stone-100 shadow-sm" onClick={() => window.open(imageUrl, '_blank')} />
+                                                                        <img 
+                                                                            src={imageUrl} 
+                                                                            alt="chat-image" 
+                                                                            // ❌ 기존 max-w-[200px] -> ✅ 수정 max-w-[350px] (사진도 크게!)
+                                                                            className="max-w-[350px] rounded-xl cursor-pointer hover:opacity-90 border border-stone-100 shadow-sm" 
+                                                                            onClick={() => window.open(imageUrl, '_blank')} // 누르면 원본 보기
+                                                                        />
                                                                     ) : (
                                                                         msg.content
                                                                     )}
