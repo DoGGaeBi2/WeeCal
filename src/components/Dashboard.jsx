@@ -24,6 +24,9 @@ function Dashboard({ tasks, addTask, setTasks }) {
 	const [viewMode, setViewMode] = useState('task');
 	const [isSwitchingView, setIsSwitchingView] = useState(false);
 
+	const [editingTask, setEditingTask] = useState(null);
+    const [editFormData, setEditFormData] = useState({ title: '', memo: '', date: '', time: '' });
+
 	// 🟢 휙! 뒤집어지는 애니메이션과 함께 모드를 바꿔주는 마법의 함수
     const handleViewModeChange = (newMode) => {
         if (viewMode === newMode) return;
@@ -101,16 +104,53 @@ function Dashboard({ tasks, addTask, setTasks }) {
         }
     };
 
-	// 🟢 개별 수정 함수 (버블에 마우스 올렸을 때 쓰는 용도)
-	const editSingleTask = async (task, e) => {
-		e.stopPropagation(); // 클릭이 뒤로 번지는 거 막기
-		const newTitle = window.prompt("일정 제목을 수정해 볼까?", task.title);
-		if (newTitle && newTitle !== task.title) {
-			await supabase.from('tasks').update({ title: newTitle }).eq('id', task.id);
-			setTasks(prev => prev.map(t => t.id === task.id ? { ...t, title: newTitle } : t));
-			recordLog('수정', newTitle);
-		}
-	};
+	// 🟢 개별 수정 함수 업그레이드 (클릭 시 예쁜 팝업 열기)
+    const editSingleTask = (task, e) => {
+        e.stopPropagation();
+        setEditingTask(task);
+        
+        // "2/25 15:00" 처럼 묶인 날짜를 입력창 2개에 예쁘게 쪼개서 넣기
+        let initialDate = '';
+        let initialTime = '';
+        if (task.date) {
+            const parts = task.date.split(' ');
+            initialDate = parts[0] || '';
+            initialTime = parts[1] || '';
+        }
+        
+        setEditFormData({
+            title: task.title || '',
+            memo: task.memo || '',
+            date: initialDate,
+            time: initialTime
+        });
+    };
+
+    // 🟢 팝업창에서 '저장' 눌렀을 때 DB랑 화면에 싹 덮어씌우는 함수
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editFormData.title.trim()) return alert('제목은 꼭 입력해 줘!');
+
+        // 쪼개놨던 날짜랑 시간을 다시 합치기
+        const newDateString = editFormData.date ? `${editFormData.date} ${editFormData.time}`.trim() : null;
+
+        const updateData = {
+            title: editFormData.title,
+            memo: editFormData.memo,
+            date: newDateString,
+        };
+
+        const { error } = await supabase.from('tasks').update(updateData).eq('id', editingTask.id);
+
+        if (!error) {
+            // 화면 즉시 업데이트
+            setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...updateData } : t));
+            recordLog('수정', updateData.title);
+            setEditingTask(null); // 수정 완료 후 모달창 닫기
+        } else {
+            alert('수정 중 에러가 발생했어!');
+        }
+    };
 
 	// 🟢 개별 삭제 함수 (가짜 삭제)
 	const deleteSingleTask = async (id, e) => {
@@ -511,6 +551,47 @@ function Dashboard({ tasks, addTask, setTasks }) {
               </div>
             </div>
           </div>
+		  
+		  {/* 🟢 [새로 추가된 영역] 일정 수정 모달(팝업) 창 */}
+            {editingTask && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl flex flex-col gap-5 text-left">
+                        <h3 className="text-xl font-bold text-stone-800">일정 수정하기</h3>
+                        
+                        <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+                            {/* 1. 제목 입력칸 */}
+                            <div>
+                                <label className="block text-xs font-bold text-stone-400 mb-1">제목 (필수)</label>
+                                <input type="text" value={editFormData.title} onChange={e => setEditFormData({...editFormData, title: e.target.value})} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-300 outline-none font-bold text-stone-700" />
+                            </div>
+                            
+                            {/* 2. 메모 입력칸 */}
+                            <div>
+                                <label className="block text-xs font-bold text-stone-400 mb-1">메모 상세 내용</label>
+                                <textarea value={editFormData.memo} onChange={e => setEditFormData({...editFormData, memo: e.target.value})} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-300 outline-none h-24 resize-none text-sm text-stone-600" />
+                            </div>
+                            
+                            {/* 3. 날짜 & 시간 입력칸 */}
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold text-stone-400 mb-1">날짜 (예: 2/25)</label>
+                                    <input type="text" value={editFormData.date} onChange={e => setEditFormData({...editFormData, date: e.target.value})} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-300 outline-none text-sm font-bold text-stone-700" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold text-stone-400 mb-1">시간 (예: 15:00)</label>
+                                    <input type="text" value={editFormData.time} onChange={e => setEditFormData({...editFormData, time: e.target.value})} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-300 outline-none text-sm font-bold text-stone-700" />
+                                </div>
+                            </div>
+                            
+                            {/* 취소 / 저장 버튼 */}
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button type="button" onClick={() => setEditingTask(null)} className="px-5 py-2.5 rounded-xl font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer">취소</button>
+                                <button type="submit" className="px-5 py-2.5 rounded-xl font-bold text-white bg-orange-400 hover:bg-orange-500 shadow-md transition-colors cursor-pointer">저장하기</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
 				</div> {/* 우측 컬럼 끝 */}
 			</div> {/* 메인 하단 영역 끝 */}
