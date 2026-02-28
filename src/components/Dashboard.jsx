@@ -134,10 +134,38 @@ function Dashboard({ tasks, addTask, setTasks }) {
         // 쪼개놨던 날짜랑 시간을 다시 합치기
         const newDateString = editFormData.date ? `${editFormData.date} ${editFormData.time}`.trim() : null;
 
+        // 🟢 [핵심 추가] 바뀐 날짜를 기준으로 D-Day 다시 계산하기!
+        let calculatedDDay = editingTask.dDay; 
+        if (newDateString && editFormData.date) {
+            const currentYear = new Date().getFullYear();
+            // 자바스크립트가 이해할 수 있는 날짜 포맷으로 변환 (예: 2026/2/28 20:00)
+            const targetDate = new Date(`${currentYear}/${editFormData.date} ${editFormData.time || '00:00'}`);
+            
+            if (!isNaN(targetDate)) {
+                const today = new Date();
+                // 시간 빼고 '날짜'끼리만 정확하게 비교하기 위해 밤 12시 기준으로 맞춤
+                const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+                
+                // 며칠 차이나는지 계산
+                const diffDays = Math.round((targetMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+                const timePart = editFormData.time ? `${editFormData.time}까지` : '까지';
+                
+                // D-0, D-X, D+X 형식으로 예쁘게 조립
+                if (diffDays === 0) calculatedDDay = `D-0 ${timePart}`;
+                else if (diffDays > 0) calculatedDDay = `D-${diffDays} ${timePart}`;
+                else calculatedDDay = `D+${Math.abs(diffDays)} ${timePart}`; // 이미 지난 일정은 D+ 로 표시
+            }
+        } else if (!newDateString) {
+            calculatedDDay = ''; // 날짜를 아예 지우면 D-Day도 날림
+        }
+
+        // 업데이트할 데이터 꾸러미
         const updateData = {
             title: editFormData.title,
             memo: editFormData.memo,
             date: newDateString,
+            dDay: calculatedDDay // 🟢 계산된 D-Day도 같이 DB로 쏨!
         };
 
         const { error } = await supabase.from('tasks').update(updateData).eq('id', editingTask.id);
@@ -551,7 +579,7 @@ function Dashboard({ tasks, addTask, setTasks }) {
               </div>
             </div>
           </div>
-		  
+
 		  {/* 🟢 [새로 추가된 영역] 일정 수정 모달(팝업) 창 */}
             {editingTask && (
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
