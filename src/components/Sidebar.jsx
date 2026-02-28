@@ -161,6 +161,38 @@ function Sidebar() {
         if (!error) setChatInput('');
     }
 
+    // 🟢 [추가] Ctrl+V 눌렀을 때 이미지를 낚아채서 수파베이스에 올리는 함수!
+    const handleImagePaste = async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.indexOf('image') !== -1) {
+                e.preventDefault(); // 기본 붙여넣기 방지
+                const file = item.getAsFile();
+                if (!file) continue;
+
+                // 1. 임시로 입력창에 업로드 중이라고 띄우기
+                setChatInput('이미지 업로드 중... ⏳');
+
+                // 2. 수파베이스 post_images에 업로드
+                const fileExt = file.name.split('.').pop() || 'png';
+                const safeFileName = `chat-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                
+                const { data, error } = await supabase.storage.from('post_images').upload(safeFileName, file);
+
+                if (data) {
+                    // 3. 업로드 성공하면 사진 주소를 가져와서 '[이미지] 주소' 형태로 세팅
+                    const { data: { publicUrl } } = supabase.storage.from('post_images').getPublicUrl(safeFileName);
+                    setChatInput(`[이미지] ${publicUrl}`);
+                } else {
+                    setChatInput('');
+                    alert('이미지 업로드에 실패했어 ㅠㅠ');
+                }
+            }
+        }
+    };
+
 	// 채팅 스크롤 하단 유지
 	useEffect(() => {
 		if (scrollRef.current) {
@@ -265,6 +297,11 @@ function Sidebar() {
                                     const senderName = sender ? sender.username : '알 수 없음';
                                     const senderAvatar = sender?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
 
+                                    // 🟢 [추가] return 하기 바로 직전 여기가 명당이야! 
+                                    // 메시지가 이미지인지 글씨인지 먼저 판별해 두는 곳!
+                                    const isImage = msg.content && msg.content.startsWith('[이미지] ');
+                                    const imageUrl = isImage ? msg.content.replace('[이미지] ', '') : '';
+
                                     return (
                                         <React.Fragment key={msg.id || i}>
                                             {showDateLine && (
@@ -275,8 +312,13 @@ function Sidebar() {
                                                 {msg.sender_id === myId ? (
                                                     <div className="flex items-end gap-1.5 max-w-[85%]">
                                                         <span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
-                                                        <div className="bg-orange-400 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-md">
-                                                            {msg.content}
+                                                        <div className={`p-3 rounded-2xl rounded-tr-none text-sm shadow-md ${isImage ? 'bg-transparent p-0 shadow-none' : 'bg-orange-400 text-white'}`}>
+                                                            {/* 🟢 내가 보낸 메시지 이미지 처리 */}
+                                                            {isImage ? (
+                                                                <img src={imageUrl} alt="chat-image" className="max-w-[200px] rounded-xl cursor-pointer hover:opacity-90 border border-stone-100 shadow-sm" onClick={() => window.open(imageUrl, '_blank')} />
+                                                            ) : (
+                                                                msg.content
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -285,8 +327,13 @@ function Sidebar() {
                                                         <div className="flex flex-col gap-1">
                                                             <span className="text-[10px] font-bold text-stone-500 pl-1">{senderName}</span>
                                                             <div className="flex items-end gap-1.5">
-                                                                <div className="bg-white text-stone-700 p-3 rounded-2xl rounded-tl-none border border-stone-100 text-sm shadow-sm">
-                                                                    {msg.content}
+                                                                <div className={`text-stone-700 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm ${isImage ? 'bg-transparent p-0 shadow-none border-none' : 'bg-white border border-stone-100'}`}>
+                                                                    {/* 🟢 남이 보낸 메시지 이미지 처리 */}
+                                                                    {isImage ? (
+                                                                        <img src={imageUrl} alt="chat-image" className="max-w-[200px] rounded-xl cursor-pointer hover:opacity-90 border border-stone-100 shadow-sm" onClick={() => window.open(imageUrl, '_blank')} />
+                                                                    ) : (
+                                                                        msg.content
+                                                                    )}
                                                                 </div>
                                                                 <span className="text-[9px] text-stone-400 min-w-fit mb-1">{formatMsgTime(msg.created_at)}</span>
                                                             </div>
@@ -299,7 +346,13 @@ function Sidebar() {
                                 }) : <p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>}
                             </div>
                             <form onSubmit={sendMessage} className="p-3 bg-white border-t border-stone-100 flex gap-2">
-                                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="메시지 입력..." className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-300" />
+                                <input 
+                                    value={chatInput} 
+                                    onChange={(e) => setChatInput(e.target.value)} 
+                                    onPaste={handleImagePaste} 
+                                    placeholder="메시지 입력... (이미지 복붙 가능)" 
+                                    className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-300" 
+                                />
                                 <button type="submit" className="bg-orange-400 text-white px-4 py-2 rounded-xl font-bold text-sm cursor-pointer hover:bg-orange-500">전송</button>
                             </form>
                         </div>
