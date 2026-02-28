@@ -33,9 +33,11 @@ function Routine({ type, title, columns }) {
     };
 
     const resetColumn = async (period) => {
-        if (!window.confirm(`${period} 루틴을 전부 초기화할까?`)) return;
-        await supabase.from('routines').update({ is_completed: false }).eq('type', type).eq('period', period);
-        setRoutines(routines.map(r => r.period === period ? { ...r, is_completed: false } : r));
+        // 1. 팝업창 묻지도 따지지도 않고 바로 DB에서 싹 삭제!
+        await supabase.from('routines').delete().eq('type', type).eq('period', period);
+        
+        // 2. 화면에서도 해당 기둥(period)의 데이터만 걸러내서 싹 치워버림!
+        setRoutines(routines.filter(r => r.period !== period));
     };
 
     return (
