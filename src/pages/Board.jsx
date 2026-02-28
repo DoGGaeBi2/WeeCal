@@ -173,6 +173,55 @@ function Board() {
         fetchPosts();
     };
 
+    // 🟢 [추가] 댓글창 파일 선택 및 업로드 함수
+    const handleCommentFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setCommentInput('파일 업로드 중... ⏳');
+
+        const fileExt = file.name.split('.').pop();
+        const safeFileName = `comment-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage.from('post_images').upload(safeFileName, file);
+
+        if (data) {
+            const { data: { publicUrl } } = supabase.storage.from('post_images').getPublicUrl(safeFileName);
+            const tag = file.type.startsWith('image/') ? '[이미지]' : '[파일]';
+            setCommentInput(`${tag} ${publicUrl}`);
+        } else {
+            setCommentInput('');
+            alert('업로드에 실패했어 ㅠㅠ');
+        }
+    };
+
+    // 🟢 [추가] 댓글창 이미지 복붙 함수
+    const handleCommentImagePaste = async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.indexOf('image') !== -1) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                if (!file) continue;
+
+                setCommentInput('이미지 업로드 중... ⏳');
+
+                const fileExt = file.name.split('.').pop() || 'png';
+                const safeFileName = `comment-paste-${Date.now()}.${fileExt}`;
+                const { data } = await supabase.storage.from('post_images').upload(safeFileName, file);
+                
+                if (data) {
+                    const { data: { publicUrl } } = supabase.storage.from('post_images').getPublicUrl(safeFileName);
+                    setCommentInput(`[이미지] ${publicUrl}`);
+                } else {
+                    setCommentInput('');
+                }
+            }
+        }
+    };
+
     // 블록 관리 함수들
     const addTextBlock = () => setBlocks([...blocks, { id: Date.now(), type: 'text', value: '' }]);
     const addImageBlock = (e) => {
@@ -339,19 +388,49 @@ function Board() {
                                                 <button onClick={() => setEditingCommentId(null)} className="text-[10px] font-bold text-stone-400">취소</button>
                                             </div>
                                         ) : (
-                                            <p className="text-stone-600 text-sm leading-snug">{c.content}</p>
+                                            <div className="text-stone-600 text-sm leading-snug">
+                                                {c.content.startsWith('[이미지] ') ? (
+                                                    <img 
+                                                        src={c.content.replace('[이미지] ', '')} 
+                                                        alt="comment-img" 
+                                                        className="max-w-[300px] rounded-xl mt-2 cursor-pointer border border-stone-100 shadow-sm hover:opacity-90"
+                                                        onClick={() => window.open(c.content.replace('[이미지] ', ''), '_blank')}
+                                                    />
+                                                ) : c.content.startsWith('[파일] ') ? (
+                                                    <a 
+                                                        href={c.content.replace('[파일] ', '')} 
+                                                        target="_blank" 
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-2 p-3 bg-stone-50 rounded-xl border border-stone-100 hover:bg-stone-100 transition-colors mt-2 text-stone-500 font-bold text-xs"
+                                                    >
+                                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                                        첨부 파일 확인하기
+                                                    </a>
+                                                ) : (
+                                                    c.content
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 ))}
                             </div>
 
                             {/* 댓글 입력창 */}
-                            <div className="flex gap-3 bg-white p-2 rounded-2xl border border-stone-200 focus-within:ring-2 focus-within:ring-orange-200 transition-all shadow-sm">
+                            <div className="flex gap-3 bg-white p-2 rounded-2xl border border-stone-200 focus-within:ring-2 focus-within:ring-orange-200 transition-all shadow-sm items-center">
+                                {/* 🟢 숨겨진 파일 선택창 */}
+                                <input type="file" id="comment-file-upload" className="hidden" onChange={handleCommentFileSelect} />
+                                
+                                {/* 🟢 클립 버튼 (📎) */}
+                                <label htmlFor="comment-file-upload" className="pl-3 text-stone-400 hover:text-orange-500 cursor-pointer transition-colors shrink-0">
+                                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94a3 3 0 114.243 4.243L8.767 14.513a1.5 1.5 0 01-2.122-2.122l7.879-7.879m-2.121-2.121L7.159 10.222a3 3 0 010 4.242 3 3 0 01-4.242 0l-4.242-4.242" />
+                                    </svg>
+                                </label>
                                 <input 
                                     value={commentInput} 
                                     onChange={(e) => setCommentInput(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()}
-                                    placeholder="댓글을 남겨보세요... (Enter로 등록)" 
+                                    placeholder="댓글을 남겨보세요..." 
                                     className="flex-1 bg-transparent border-none text-sm outline-none px-4" 
                                 />
                                 <button onClick={handleCommentSubmit} className="bg-orange-400 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-orange-500 shadow-md">등록</button>

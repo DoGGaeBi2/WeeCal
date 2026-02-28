@@ -147,6 +147,28 @@ function Sidebar() {
         if (data) setChatMessages(data);
     }
 
+    // 🟢 [추가] 파일 선택 및 업로드 함수
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setChatInput('파일 업로드 중... ⏳');
+
+        const fileExt = file.name.split('.').pop();
+        const safeFileName = `file-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage.from('post_images').upload(safeFileName, file);
+
+        if (data) {
+            const { data: { publicUrl } } = supabase.storage.from('post_images').getPublicUrl(safeFileName);
+            const tag = file.type.startsWith('image/') ? '[이미지]' : '[파일]';
+            setChatInput(`${tag} ${publicUrl}`);
+        } else {
+            setChatInput('');
+            alert('파일 업로드에 실패했어!');
+        }
+    };
+
 	// 메시지 전송
 	async function sendMessage(e) {
         e.preventDefault();
@@ -359,12 +381,21 @@ function Sidebar() {
                                     );
                                 }) : <p className="text-xs text-stone-400 text-center mt-20 italic">대화가 없습니다. 인사를 건네보세요!</p>}
                             </div>
-                            <form onSubmit={sendMessage} className="p-3 bg-white border-t border-stone-100 flex gap-2">
+                            <form onSubmit={sendMessage} className="p-3 bg-white border-t border-stone-100 flex items-center gap-2">
+                                {/* 🟢 숨겨진 파일 선택창 (label을 통해 작동함) */}
+                                <input type="file" id="file-upload" className="hidden" onChange={handleFileSelect} />
+                                
+                                {/* 🟢 클립 버튼 (📎) 아이콘 */}
+                                <label htmlFor="file-upload" className="p-2 text-stone-400 hover:text-orange-500 cursor-pointer transition-colors shrink-0">
+                                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94a3 3 0 114.243 4.243L8.767 14.513a1.5 1.5 0 01-2.122-2.122l7.879-7.879m-2.121-2.121L7.159 10.222a3 3 0 010 4.242 3 3 0 01-4.242 0l-4.242-4.242" />
+                                    </svg>
+                                </label>
                                 <input 
                                     value={chatInput} 
                                     onChange={(e) => setChatInput(e.target.value)} 
                                     onPaste={handleImagePaste} 
-                                    placeholder="메시지 입력... (이미지 복붙 가능)" 
+                                    placeholder="메시지 입력..." 
                                     className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-300" 
                                 />
                                 <button type="submit" className="bg-orange-400 text-white px-4 py-2 rounded-xl font-bold text-sm cursor-pointer hover:bg-orange-500">전송</button>

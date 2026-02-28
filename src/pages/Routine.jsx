@@ -32,6 +32,22 @@ function Routine({ type, title, columns }) {
         setRoutines(routines.map(r => r.id === id ? { ...r, is_completed: !currentStatus } : r));
     };
 
+    // 🟢 [추가] 개별 루틴 삭제 함수
+    const deleteSingleRoutine = async (id) => {
+        if (!window.confirm("이 루틴을 정말 삭제할까?")) return;
+        await supabase.from('routines').delete().eq('id', id);
+        setRoutines(prev => prev.filter(r => r.id !== id));
+    };
+
+    // 🟢 [추가] 개별 루틴 수정 함수
+    const editRoutine = async (routine) => {
+        const newContent = window.prompt("루틴 내용을 수정해볼까?", routine.content);
+        if (newContent && newContent !== routine.content) {
+            await supabase.from('routines').update({ content: newContent }).eq('id', routine.id);
+            setRoutines(prev => prev.map(r => r.id === routine.id ? { ...r, content: newContent } : r));
+        }
+    };
+
     const resetColumn = async (period) => {
         // 1. 팝업창 묻지도 따지지도 않고 바로 DB에서 싹 삭제!
         await supabase.from('routines').delete().eq('type', type).eq('period', period);
@@ -68,10 +84,30 @@ function Routine({ type, title, columns }) {
                         
                         <div className="flex-1 overflow-y-auto flex flex-col gap-2 custom-scrollbar pr-1">
                             {routines.filter(r => r.period === col).map(routine => (
-                                // 🟢 체크됐을 때 투명도 + 회색 + 취소선 들어가는 부분!
-                                <div key={routine.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${routine.is_completed ? 'bg-stone-50 border-transparent opacity-50' : 'bg-white border-stone-200 hover:border-orange-300 shadow-sm'}`} onClick={() => toggleRoutine(routine.id, routine.is_completed)}>
+                                <div 
+                                    key={routine.id} 
+
+                                    className={`relative group flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                                        routine.is_completed ? 'bg-stone-50 border-transparent opacity-50' : 'bg-white border-stone-200 hover:border-orange-300 shadow-sm'
+                                    }`}
+                                    onClick={() => toggleRoutine(routine.id, routine.is_completed)}
+                                >
                                     <input type="checkbox" checked={routine.is_completed} readOnly className="mt-1 w-4 h-4 accent-orange-500 cursor-pointer" />
-                                    <span className={`text-sm font-medium leading-snug ${routine.is_completed ? 'text-stone-400 line-through' : 'text-stone-700'}`}>{routine.content}</span>
+                                    <span className={`text-sm font-medium leading-snug flex-1 pr-12 ${routine.is_completed ? 'text-stone-400 line-through' : 'text-stone-700'}`}>
+                                        {routine.content}
+                                    </span>
+
+                                    {/* 🟢 호버했을 때만 나타나는 수정/삭제 버튼 */}
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/90 p-1 rounded-lg shadow-sm border border-stone-100">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); editRoutine(routine); }} 
+                                            className="p-1 text-[10px] font-bold text-stone-400 hover:text-orange-500 transition-colors"
+                                        >수정</button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); deleteSingleRoutine(routine.id); }} 
+                                            className="p-1 text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors"
+                                        >삭제</button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
