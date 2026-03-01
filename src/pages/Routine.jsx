@@ -141,7 +141,7 @@ function Routine({ type, title, columns }) {
                     <input 
                         value={newTaskContent} 
                         onChange={(e) => setNewTaskContent(e.target.value)} 
-                        placeholder="[18:55] 처리량 기입..." 
+                        placeholder="시간 + 내용 ..." 
                         className="bg-transparent px-2 py-2 text-sm outline-none w-full xl:w-64 font-medium" 
                     />
                     <button type="submit" className="bg-orange-400 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-500 shadow-sm shrink-0">일괄 추가</button>

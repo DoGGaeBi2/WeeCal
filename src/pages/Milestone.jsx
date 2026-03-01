@@ -60,7 +60,7 @@ function Milestone({ tasks = [] }) {
         { title: `${currentMonth + 1}월`, year: currentYear, month: currentMonth, tasks: [] },
         { title: `${(currentMonth + 1) % 12 + 1}월`, year: currentMonth + 1 > 11 ? currentYear + 1 : currentYear, month: (currentMonth + 1) % 12, tasks: [] },
         { title: `${(currentMonth + 2) % 12 + 1}월`, year: currentMonth + 2 > 11 ? currentYear + 1 : currentYear, month: (currentMonth + 2) % 12, tasks: [] },
-        { title: '그 이후', isLater: true, tasks: [] }
+        { title: '그 이외', isLater: true, tasks: [] }
     ];
 
     processedTasks.forEach(task => {
