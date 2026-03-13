@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+// ✅ 중복된 거 싹 합친 깔끔한 버전!
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import JoditEditor from 'jodit-react';
-import { useMemo } from 'react'; // 설정을 위해 필요해
 
 function Board() {
+    // 🟢 [추가] 주소창 파라미터 관리
+    const [searchParams, setSearchParams] = useSearchParams(); 
+
     // 🟢 viewMode: 'list' (목록), 'write' (글쓰기/수정), 'detail' (상세보기)
     const [viewMode, setViewMode] = useState('list');
     const [posts, setPosts] = useState([]);
     const [selectedPost, setSelectedPost] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [myId, setMyId] = useState(null);
+    const [myId, setMyId] = useState(null)
 
     // 글쓰기/수정용 상태
     const [editingPostId, setEditingPostId] = useState(null);
@@ -36,6 +40,17 @@ function Board() {
         supabase.auth.getUser().then(({ data: { user } }) => { if (user) setMyId(user.id); });
     }, []);
 
+    useEffect(() => {
+        const postId = searchParams.get('postId');
+        if (postId && posts.length > 0) {
+            const targetPost = posts.find(p => p.id.toString() === postId);
+            if (targetPost) {
+                setSelectedPost(targetPost);
+                setViewMode('detail');
+            }
+        }
+    }, [searchParams, posts]);
+
     // 1. 게시글 목록 불러오기 (상세보기 시 댓글과 작성자 프사 포함)
     async function fetchPosts() {
         const { data } = await supabase
@@ -53,16 +68,34 @@ function Board() {
     }
 
     // 2. 뷰 전환 함수들
+
+    // 🟢 [추가] 목록으로 갈 때 쓰려고 만든 함수 (주소창 꼬리표 지우기)
+    const goList = () => {
+        setSearchParams({}); // 꼬리표 지움
+        setViewMode('list');
+    };
+
     const goWrite = () => {
         setEditingPostId(null);
         setNewTitle('');
         setBlocks([{ id: Date.now(), type: 'text', value: '' }]);
+        setSearchParams({}); // 🟢 [추가] 글쓸 때도 꼬리표 지움
         setViewMode('write');
     };
 
     const goDetail = (post) => {
+        setSearchParams({ postId: post.id }); // 🟢 [추가] 주소창에 ?postId=번호 달기!
         setSelectedPost(post);
         setViewMode('detail');
+    };
+
+    // 🟢 [새로 추가] 공유하기(링크 복사) 함수
+    const handleShare = (e, postId) => {
+        e.stopPropagation(); // 클릭했을 때 상세페이지로 넘어가는 거 막기
+        const shareUrl = `${window.location.origin}/board?postId=${postId}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('클립보드에 링크가 복사되었어! 원하는 곳에 붙여넣어 봐 🚀');
+        });
     };
 
     const startEditing = (post) => {
@@ -239,7 +272,6 @@ function Board() {
             .post-content-area h3 { font-size: 1.5rem !important; font-weight: 700; }
             .post-content-area p { margin-bottom: 0.5rem; }
             .post-content-area span[style*="font-size"] { line-height: 1.2; }
-            /* 🟢 [추가] 글머리 기호와 숫자 리스트 살려내는 마법의 CSS */
             .post-content-area ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem; }
             .post-content-area ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
             .post-content-area li { margin-bottom: 0.5rem; display: list-item; }
@@ -247,7 +279,7 @@ function Board() {
         <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800 overflow-hidden">
             {/* 상단 헤더 */}
             <div className="flex justify-between items-center mb-8 shrink-0">
-                <div onClick={() => setViewMode('list')} className="cursor-pointer">
+                <div onClick={goList} className="cursor-pointer">
                     <h2 className="text-2xl font-bold">팀 게시판</h2>
                     <p className="text-sm text-stone-400 mt-1">팀원들과 자유롭게 소통하세요.</p>
                 </div>
@@ -255,7 +287,7 @@ function Board() {
                     <button onClick={goWrite} className="bg-orange-400 text-white px-6 py-2.5 rounded-full font-bold shadow-md hover:bg-orange-500 transition-all">글쓰기</button>
                 )}
                 {viewMode !== 'list' && (
-                    <button onClick={() => setViewMode('list')} className="text-stone-400 font-bold hover:text-stone-600">목록으로</button>
+                    <button onClick={goList} className="text-stone-400 font-bold hover:text-stone-600">목록으로</button>
                 )}
             </div>
 
@@ -335,13 +367,24 @@ function Board() {
                             <div>
                                 <h1 className="text-3xl font-extrabold text-stone-800 mb-4">{selectedPost.title}</h1>
                                 <div className="flex items-center gap-4">
-                                    <img src={selectedPost.author?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} className="w-10 h-10 rounded-full object-cover" alt="author" />
-                                    <div>
-                                        <p className="font-bold text-stone-700 text-sm">{selectedPost.author_name}</p>
-                                        <p className="text-[11px] text-stone-400">{new Date(selectedPost.created_at).toLocaleString()}</p>
-                                    </div>
+                                    {/* 🟢 [추가] 목록 화면 공유 버튼 */}
+                                    <button onClick={(e) => handleShare(e, post.id)} className="p-2 text-stone-300 hover:text-orange-400 bg-white border border-stone-100 rounded-full shadow-sm hover:shadow transition-all" title="링크 복사">
+                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                                    </button>
+                                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-stone-300 group-hover:text-orange-300">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                    </svg>
                                 </div>
                             </div>
+                        {/* 🟢 [추가] 상세 화면 공유 버튼 */}
+                            <div className="flex gap-2 items-center">
+                                <button onClick={(e) => handleShare(e, selectedPost.id)} className="p-2 bg-orange-50 rounded-lg text-orange-500 hover:bg-orange-100 transition-all font-bold text-xs flex items-center gap-1">
+                                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                                    공유
+                                </button>
+                            </div>
+
+                            
                             {/* 🟢 본인 글일 때만 수정/삭제 노출 */}
                             {selectedPost.author_id === myId && (
                                 <div className="flex gap-2">
