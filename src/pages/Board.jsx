@@ -365,14 +365,13 @@ function Board() {
                         <div className="flex justify-between items-start mb-8 border-b border-stone-100 pb-8">
                             <div>
                                 <h1 className="text-3xl font-extrabold text-stone-800 mb-4">{selectedPost.title}</h1>
+                                {/* 🟢 이상한 버튼들 싹 지우고, 이 코드로 교체! (프사, 이름, 날짜 복구) */}
                                 <div className="flex items-center gap-4">
-                                    {/* 🟢 [추가] 목록 화면 공유 버튼 */}
-                                    <button onClick={(e) => handleShare(e, post.id)} className="p-2 text-stone-300 hover:text-orange-400 bg-white border border-stone-100 rounded-full shadow-sm hover:shadow transition-all" title="링크 복사">
-                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
-                                    </button>
-                                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-stone-300 group-hover:text-orange-300">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                                    </svg>
+                                    <img src={selectedPost.author?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"} className="w-10 h-10 rounded-full object-cover" alt="author" />
+                                    <div>
+                                        <p className="font-bold text-stone-700 text-sm">{selectedPost.author_name}</p>
+                                        <p className="text-[11px] text-stone-400">{new Date(selectedPost.created_at).toLocaleString()}</p>
+                                    </div>
                                 </div>
                             </div>
                             
