@@ -1,4 +1,3 @@
-// ✅ 중복된 거 싹 합친 깔끔한 버전!
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -272,9 +271,9 @@ function Board() {
             .post-content-area h3 { font-size: 1.5rem !important; font-weight: 700; }
             .post-content-area p { margin-bottom: 0.5rem; }
             .post-content-area span[style*="font-size"] { line-height: 1.2; }
-            .post-content-area ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem; }
-            .post-content-area ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
-            .post-content-area li { margin-bottom: 0.5rem; display: list-item; }
+            .post-content-area ul, .jodit-wysiwyg ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem; }
+            .post-content-area ol, .jodit-wysiwyg ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
+            .post-content-area li, .jodit-wysiwyg li { margin-bottom: 0.5rem; display: list-item !important; }
         `}</style>,
         <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm p-6 md:p-8 text-stone-800 overflow-hidden">
             {/* 상단 헤더 */}
@@ -371,32 +370,40 @@ function Board() {
                                     <button onClick={(e) => handleShare(e, post.id)} className="p-2 text-stone-300 hover:text-orange-400 bg-white border border-stone-100 rounded-full shadow-sm hover:shadow transition-all" title="링크 복사">
                                         <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
                                     </button>
+                                    {/* 🟢 [추가] 목록 뷰 화살표 옆에 공유 아이콘 추가! */}
+                                <div className="flex items-center gap-3"> {/* 🟢 gap-3으로 화살표와 간격 확보 */}
+                                    <button onClick={(e) => handleShare(e, post.id)} className="p-2 text-stone-300 hover:text-orange-400 bg-white border border-stone-100 rounded-full shadow-sm hover:shadow transition-all" title="링크 복사">
+                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                                    </button>
                                     <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-stone-300 group-hover:text-orange-300">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                     </svg>
                                 </div>
+                                </div>
                             </div>
-                        {/* 🟢 [추가] 상세 화면 공유 버튼 */}
-                            <div className="flex gap-2 items-center">
+                            
+                            {/* 🟢 상세 화면: 공유 버튼 및 본인 글 수정/삭제 버튼 */}
+                            <div className="flex items-center gap-2"> {/* 🟢 gap-2로 버튼 사이 간격 확보 */}
+                                {/* 🟢 공유 버튼은 누구에게나 보임! */}
                                 <button onClick={(e) => handleShare(e, selectedPost.id)} className="p-2 bg-orange-50 rounded-lg text-orange-500 hover:bg-orange-100 transition-all font-bold text-xs flex items-center gap-1">
                                     <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
                                     공유
                                 </button>
+                                
+                                {/* 본인 글일 때만 수정/삭제 노출 */}
+                                {selectedPost.author_id === myId && (
+                                    <>
+                                        <button onClick={() => startEditing(selectedPost)} className="p-2 bg-stone-50 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                                            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                                        </button>
+                                        <button onClick={() => deletePost(selectedPost.id)} className="p-2 bg-stone-50 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                                            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                        </button>
+                                    </>
+                                )}
                             </div>
+                         </div>
 
-                            
-                            {/* 🟢 본인 글일 때만 수정/삭제 노출 */}
-                            {selectedPost.author_id === myId && (
-                                <div className="flex gap-2">
-                                    <button onClick={() => startEditing(selectedPost)} className="p-2 bg-stone-50 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
-                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
-                                    </button>
-                                    <button onClick={() => deletePost(selectedPost.id)} className="p-2 bg-stone-50 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all">
-                                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                                    </button>
-                                </div>
-                            )}
-                        </div>
 
                         {/* 게시글 본문 */}
                         <div className="flex flex-col gap-6 mb-16">
