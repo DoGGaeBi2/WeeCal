@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// ✅ 중복된 거 싹 합친 깔끔한 버전!
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import JoditEditor from 'jodit-react';
-import { useMemo } from 'react'; // 설정을 위해 필요해
-
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom'; // 🟢 [추가] 주소창 꼬리표 읽는 용도
 
 function Board() {
     // 🟢 [추가] 주소창 파라미터 관리
