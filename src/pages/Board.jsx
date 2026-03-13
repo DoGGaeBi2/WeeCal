@@ -93,7 +93,7 @@ function Board() {
         e.stopPropagation(); // 클릭했을 때 상세페이지로 넘어가는 거 막기
         const shareUrl = `${window.location.origin}/board?postId=${postId}`;
         navigator.clipboard.writeText(shareUrl).then(() => {
-            alert('클립보드에 링크가 복사되었어! 원하는 곳에 붙여넣어 봐 🚀');
+            alert('클립보드에 링크가 복사되었습니다!');
         });
     };
 
