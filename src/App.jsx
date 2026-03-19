@@ -23,6 +23,11 @@ import TimeCalculator from './components/TimeCalculator'
 import Routine from './pages/Routine';
 
 function App() {
+
+	// [추가] 현재 로그인한 유저의 세션 상태 관리
+	const [session, setSession] = useState(null);
+	const [tasks, setTasks] = useState([]); // [수정] 이제 빈 배열로 시작!
+
 	// 🟢 [추가] 데스크탑 알림을 띄워주는 함수
     const showDesktopNotification = (title, body) => {
         // 1. 브라우저가 알림을 지원하는지 확인
@@ -101,9 +106,7 @@ function App() {
         return () => supabase.removeChannel(channel);
     }, [session]);
 
-	// [추가] 현재 로그인한 유저의 세션 상태 관리
-	const [session, setSession] = useState(null);
-	const [tasks, setTasks] = useState([]); // [수정] 이제 빈 배열로 시작!
+	
 
 	// 🟢 [추가] 로그인이 확인되면 DB에서 일정 불러오기
 	useEffect(() => {
