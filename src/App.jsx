@@ -55,7 +55,7 @@ function App() {
             Notification.requestPermission();
         }
 
-        const channel = supabase.channel(channelName)
+        const channel = supabase.channel('realtime-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
                 console.log("🔥 [Realtime] 새 데이터 도착!", payload); 
                 
@@ -66,13 +66,16 @@ function App() {
                     setNotification({ type: 'task', message: `🚩 새로운 마일스톤이 등록되었습니다: ${payload.new.title}` });
                     showDesktopNotification("새로운 마일스톤 🚩", payload.new.title);
                 } else {
-                    setNotification({ type: 'task', message: `📅 새로운 일정이 등록되었습니다: ${payload.new.title}` });
+                    setNotification({ type: 'task', message: `새로운 일정이 등록되었습니다: ${payload.new.title}` });
                     showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
                 }
-
                 setTimeout(() => setNotification(null), 3000);
+                
+                // 데스크탑 푸시 알림 전송!
+                showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
 
-                // 🟢 새로고침 없이 즉시 화면에 밀어 넣기
+                // 🟢 [추가] 새로고침 없이 화면에 바로 추가하는 마법!
+                // (단, 내가 등록해서 이미 화면에 있는 일정이면 중복으로 안 그리게 방어)
                 setTasks(prevTasks => {
                     if (prevTasks.find(t => t.id === payload.new.id)) return prevTasks;
                     return [payload.new, ...prevTasks];
