@@ -23,6 +23,84 @@ import TimeCalculator from './components/TimeCalculator'
 import Routine from './pages/Routine';
 
 function App() {
+	// 🟢 [추가] 데스크탑 알림을 띄워주는 함수
+    const showDesktopNotification = (title, body) => {
+        // 1. 브라우저가 알림을 지원하는지 확인
+        if (!("Notification" in window)) return;
+
+        // 2. 알림 권한이 허용(granted)되어 있으면 바로 알림 띄우기
+        if (Notification.permission === "granted") {
+            new Notification(title, { body }); 
+            // 💡 만약 아이콘도 넣고 싶으면 { body, icon: '/favicon.ico' } 처럼 추가 가능!
+        } 
+        // 3. 아직 권한을 묻지 않았다면(default) 권한 요청 후 알림 띄우기
+        else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    new Notification(title, { body });
+                }
+            });
+        }
+    };
+
+	// 👇 기존에 있던 App.jsx 내부 알림 useEffect 부분
+    useEffect(() => {
+        // 🟢 [추가] 유저가 앱에 들어왔을 때 미리 알림 권한 물어보기
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+
+        const channel = supabase.channel('realtime-updates')
+            // 1. 기존: 새로운 일정 등록
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
+                setNotification({ type: 'task', message: `새로운 일정이 등록되었습니다: ${payload.new.title}` });
+                setTimeout(() => setNotification(null), 3000);
+                showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
+            })
+            
+            // 🟢 2. [추가] 태스크 등급(category) 변경 감지
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, payload => {
+                // 이전 등급과 새로운 등급이 다를 때만 알림 전송!
+                if (payload.old.category !== payload.new.category) {
+                    showDesktopNotification(
+                        "태스크 등급 변경 🚨", 
+                        `[${payload.new.title}]의 등급이 '${payload.new.category}'(으)로 변경되었습니다!`
+                    );
+                }
+            })
+
+            // 3. 기존: 개인 메시지 도착
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                if (payload.new.receiver_id === session?.user.id) {
+                    setNotification({ type: 'message', message: '새로운 메시지가 도착했습니다! ✉️' });
+                    setTimeout(() => setNotification(null), 3000);
+                    showDesktopNotification("WeeCal 새 메시지 💬", "팀원에게서 새로운 메시지가 도착했습니다!");
+                }
+            })
+            
+            // 🟢 4. [추가] 게시판 새 글 등록 알림 (내가 쓴 글 제외)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, payload => {
+                if (payload.new.author_id !== session?.user.id) {
+                    showDesktopNotification("새로운 게시글 📝", `게시판에 새 글이 올라왔습니다: ${payload.new.title}`);
+                }
+            })
+
+            // 🟢 5. [추가] 내 게시글에 새 댓글 달림 알림
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, async payload => {
+                // 내가 쓴 댓글이 아닐 때만
+                if (payload.new.author_id !== session?.user.id) {
+                    // 이 댓글이 달린 '게시글 원본'을 조회해서 내 글인지 확인!
+                    const { data: post } = await supabase.from('posts').select('author_id, title').eq('id', payload.new.post_id).single();
+                    if (post && post.author_id === session?.user.id) {
+                        showDesktopNotification("새로운 댓글 💬", `내 게시물 [${post.title}]에 새 댓글이 달렸습니다!`);
+                    }
+                }
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, [session]);
+
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
 	const [session, setSession] = useState(null);
 	const [tasks, setTasks] = useState([]); // [수정] 이제 빈 배열로 시작!
