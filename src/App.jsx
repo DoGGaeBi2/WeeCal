@@ -56,11 +56,20 @@ function App() {
         }
 
         const channel = supabase.channel('realtime-updates')
-            // 1. 기존: 새로운 일정 등록
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
+                // 기존 웹 화면 내 주황색 팝업
                 setNotification({ type: 'task', message: `새로운 일정이 등록되었습니다: ${payload.new.title}` });
                 setTimeout(() => setNotification(null), 3000);
+                
+                // 데스크탑 푸시 알림 전송!
                 showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
+
+                // 🟢 [추가] 새로고침 없이 화면에 바로 추가하는 마법!
+                // (단, 내가 등록해서 이미 화면에 있는 일정이면 중복으로 안 그리게 방어)
+                setTasks(prevTasks => {
+                    if (prevTasks.find(t => t.id === payload.new.id)) return prevTasks;
+                    return [payload.new, ...prevTasks];
+                });
             })
             
             // 🟢 2. [추가] 태스크 등급(category) 변경 감지
