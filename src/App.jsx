@@ -27,6 +27,7 @@ function App() {
 	// [추가] 현재 로그인한 유저의 세션 상태 관리
 	const [session, setSession] = useState(null);
 	const [tasks, setTasks] = useState([]); // [수정] 이제 빈 배열로 시작!
+	const [notification, setNotification] = useState(null);
 
 	// 🟢 [추가] 데스크탑 알림을 띄워주는 함수
     const showDesktopNotification = (title, body) => {
@@ -48,18 +49,23 @@ function App() {
         }
     };
 
-	// 👇 기존에 있던 App.jsx 내부 알림 useEffect 부분
+
+	// 🟢 [최종 합본] 실시간 알림 로직 (이거 하나만 있으면 끝!)
     useEffect(() => {
-        // 🟢 [추가] 유저가 앱에 들어왔을 때 미리 알림 권한 물어보기
+        // 1. 로그인 정보가 확실히 있을 때만 연결 시작!
+        if (!session || !session.user) return;
+
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
 
-        const channel = supabase.channel('realtime-updates')
+        // 2. 안전한 채널 이름 생성
+        const channelName = `realtime-updates-${session.user.id}`;
+        
+        const channel = supabase.channel(channelName)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
                 console.log("🔥 [Realtime] 새 데이터 도착!", payload); 
                 
-                // 🟢 [수정] 마일스톤인지 일반 일정인지 구분하기!
                 const isMilestone = payload.new.is_milestone;
                 
                 if (isMilestone) {
@@ -70,59 +76,58 @@ function App() {
                     showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
                 }
                 setTimeout(() => setNotification(null), 3000);
-                
-                // 데스크탑 푸시 알림 전송!
-                showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
 
-                // 🟢 [추가] 새로고침 없이 화면에 바로 추가하는 마법!
-                // (단, 내가 등록해서 이미 화면에 있는 일정이면 중복으로 안 그리게 방어)
+                // 새로고침 없이 화면에 추가
                 setTasks(prevTasks => {
                     if (prevTasks.find(t => t.id === payload.new.id)) return prevTasks;
                     return [payload.new, ...prevTasks];
                 });
             })
-            
-            // 🟢 2. [추가] 태스크 등급(category) 변경 감지
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, payload => {
+                console.log("🔥 [Realtime] 일정 수정됨!", payload);
+                
                 // 이전 등급과 새로운 등급이 다를 때만 알림 전송!
-                if (payload.old.category !== payload.new.category) {
-                    showDesktopNotification(
-                        "태스크 등급 변경 🚨", 
-                        `[${payload.new.title}]의 등급이 '${payload.new.category}'(으)로 변경되었습니다!`
-                    );
+                if (payload.old && payload.old.category && payload.old.category !== payload.new.category) {
+                    const isMilestone = payload.new.is_milestone;
+                    
+                    if (isMilestone) {
+                        showDesktopNotification("마일스톤 등급 변경 🚩", `마일스톤 [${payload.new.title}]의 등급이 '${payload.new.category}'(으)로 변경되었습니다!`);
+                    } else {
+                        showDesktopNotification("태스크 등급 변경 🚨", `[${payload.new.title}]의 등급이 '${payload.new.category}'(으)로 변경되었습니다!`);
+                    }
                 }
-            })
 
-            // 3. 기존: 개인 메시지 도착
+                // 🟢 [여기가 정답!] 중복 지우고 딱 한 번만 화면 갈아끼우기!
+                setTasks(prevTasks => prevTasks.map(t => t.id === payload.new.id ? payload.new : t));
+            })
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if (payload.new.receiver_id === session?.user.id) {
+                if (payload.new.receiver_id === session.user.id) {
                     setNotification({ type: 'message', message: '새로운 메시지가 도착했습니다! ✉️' });
                     setTimeout(() => setNotification(null), 3000);
                     showDesktopNotification("WeeCal 새 메시지 💬", "팀원에게서 새로운 메시지가 도착했습니다!");
                 }
             })
-            
-            // 🟢 4. [추가] 게시판 새 글 등록 알림 (내가 쓴 글 제외)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, payload => {
-                if (payload.new.author_id !== session?.user.id) {
+                if (payload.new.author_id !== session.user.id) {
                     showDesktopNotification("새로운 게시글 📝", `게시판에 새 글이 올라왔습니다: ${payload.new.title}`);
                 }
             })
-
-            // 🟢 5. [추가] 내 게시글에 새 댓글 달림 알림
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, async payload => {
-                // 내가 쓴 댓글이 아닐 때만
-                if (payload.new.author_id !== session?.user.id) {
-                    // 이 댓글이 달린 '게시글 원본'을 조회해서 내 글인지 확인!
+                if (payload.new.author_id !== session.user.id) {
                     const { data: post } = await supabase.from('posts').select('author_id, title').eq('id', payload.new.post_id).single();
-                    if (post && post.author_id === session?.user.id) {
+                    if (post && post.author_id === session.user.id) {
                         showDesktopNotification("새로운 댓글 💬", `내 게시물 [${post.title}]에 새 댓글이 달렸습니다!`);
                     }
                 }
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log("📡 [Realtime] 수파베이스 연결 상태:", status); 
+            });
 
-        return () => supabase.removeChannel(channel);
+        return () => {
+            console.log("📡 [Realtime] 연결 해제됨");
+            supabase.removeChannel(channel);
+        };
     }, [session]);
 
 	
@@ -164,77 +169,6 @@ function App() {
 
 		if (!error) setTasks(prev => [data[0], ...prev]);
 	};
-
-	// App.jsx 내부 useEffect에 추가
-	const [notification, setNotification] = useState(null);
-
-	// 👇 기존에 있던 App.jsx 내부의 realtime-updates useEffect를 이걸로 통째로 싹 갈아 끼워줘!
-    useEffect(() => {
-        // 🟢 1. 핵심: 로그인 정보가 확실히 있을 때만 연결 시작! (보안 차단 방지)
-        if (!session || !session.user) return;
-
-        if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
-        }
-
-        // 🟢 2. React 18 중복 연결 버그 방지를 위해 채널 이름에 유저 ID 부여
-        const channelName = `realtime-updates-${session.user.id}`;
-        
-        const channel = supabase.channel(channelName)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
-                console.log("🔥 [Realtime] 새 일정 도착!", payload); // (F12 확인용 로그)
-                
-                setNotification({ type: 'task', message: `새로운 일정이 등록되었습니다: ${payload.new.title}` });
-                setTimeout(() => setNotification(null), 3000);
-                showDesktopNotification("WeeCal 새로운 일정 📅", payload.new.title);
-
-                // 🟢 3. [추가] 새로고침 없이 즉시 화면에 일정 밀어 넣기!
-                setTasks(prevTasks => {
-                    if (prevTasks.find(t => t.id === payload.new.id)) return prevTasks;
-                    return [payload.new, ...prevTasks];
-                });
-            })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, payload => {
-                console.log("🔥 [Realtime] 일정 수정됨!", payload); // (F12 확인용 로그)
-                
-                // 기존 일정 등급 변경 시 알림 (💡단, DB 설정에 따라 payload.old 정보가 없을 수 있어서 안전장치 추가)
-                if (payload.old && payload.old.category && payload.old.category !== payload.new.category) {
-                    showDesktopNotification("태스크 등급 변경 🚨", `[${payload.new.title}]의 등급이 '${payload.new.category}'(으)로 변경되었습니다!`);
-                }
-                
-                // 🟢 [추가] 새로고침 없이 화면의 기존 일정 데이터 갈아 끼우기!
-                setTasks(prevTasks => prevTasks.map(t => t.id === payload.new.id ? payload.new : t));
-            })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if (payload.new.receiver_id === session.user.id) {
-                    setNotification({ type: 'message', message: '새로운 메시지가 도착했습니다! ✉️' });
-                    setTimeout(() => setNotification(null), 3000);
-                    showDesktopNotification("WeeCal 새 메시지 💬", "팀원에게서 새로운 메시지가 도착했습니다!");
-                }
-            })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, payload => {
-                if (payload.new.author_id !== session.user.id) {
-                    showDesktopNotification("새로운 게시글 📝", `게시판에 새 글이 올라왔습니다: ${payload.new.title}`);
-                }
-            })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, async payload => {
-                if (payload.new.author_id !== session.user.id) {
-                    const { data: post } = await supabase.from('posts').select('author_id, title').eq('id', payload.new.post_id).single();
-                    if (post && post.author_id === session.user.id) {
-                        showDesktopNotification("새로운 댓글 💬", `내 게시물 [${post.title}]에 새 댓글이 달렸습니다!`);
-                    }
-                }
-            })
-            .subscribe((status) => {
-                // 🟢 4. 수파베이스와 연결이 성공했는지 알려주는 로그!
-                console.log("📡 [Realtime] 수파베이스 연결 상태:", status); 
-            });
-
-        return () => {
-            console.log("📡 [Realtime] 연결 해제됨");
-            supabase.removeChannel(channel);
-        };
-    }, [session]);
 
 	// [추가] 앱이 켜질 때 로그인 상태 확인하기
 	useEffect(() => {
