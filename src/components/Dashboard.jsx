@@ -445,29 +445,30 @@ function Dashboard({ tasks, addTask, setTasks }) {
 							</select>
 
 							{/* 🟢 3. 기존 필터 버튼 (맨 우측에 둠) */}
-							<div className="relative">
-								<button 
-									onClick={() => setIsFilterOpen(!isFilterOpen)}
-									className="px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 flex items-center gap-2 hover:bg-stone-100 cursor-pointer transition-all"
-								>
-									<span className={`w-2 h-2 rounded-full ${filterOptions.find(opt => opt.name === selectedFilter)?.color}`}></span>
-									{selectedFilter} 필터 ▾
-								</button>
-								{isFilterOpen && (
-									<div className="absolute right-0 mt-2 w-32 bg-white border border-stone-100 rounded-2xl shadow-xl z-10 overflow-hidden">
-									{filterOptions.map((opt) => (
-										<button
-										key={opt.name}
-										onClick={() => { setSelectedFilter(opt.name); setIsFilterOpen(false); }}
-										className="w-full px-4 py-2.5 text-left text-sm font-medium text-stone-600 hover:bg-orange-50 hover:text-orange-500 transition-colors flex items-center gap-2 cursor-pointer"
-										>
-										<span className={`w-2 h-2 rounded-full ${opt.color}`}></span>
-										{opt.name}
-										</button>
-									))}
-									</div>
-								)}
-								</div>
+                            <div className="relative">
+                                <button 
+                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                    className="px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-700 flex items-center gap-2 hover:bg-stone-100 cursor-pointer transition-all"
+                                >
+                                    <span className={`w-2 h-2 rounded-full ${filterOptions.find(opt => opt.name === selectedFilter)?.color}`}></span>
+                                    {selectedFilter} 필터 ▾
+                                </button>
+                                {isFilterOpen && (
+                                    // 👇 [여기 수정!] max-h-56(최대 높이 제한), overflow-y-auto(스크롤 생성), custom-scrollbar(예쁜 스크롤바) 추가! 기존의 overflow-hidden은 지워줘.
+                                    <div className="absolute right-0 mt-2 w-32 bg-white border border-stone-100 rounded-2xl shadow-xl z-10 max-h-56 overflow-y-auto custom-scrollbar">
+                                    {filterOptions.map((opt) => (
+                                        <button
+                                        key={opt.name}
+                                        onClick={() => { setSelectedFilter(opt.name); setIsFilterOpen(false); }}
+                                        className="w-full px-4 py-2.5 text-left text-sm font-medium text-stone-600 hover:bg-orange-50 hover:text-orange-500 transition-colors flex items-center gap-2 cursor-pointer"
+                                        >
+                                        <span className={`w-2 h-2 rounded-full ${opt.color}`}></span>
+                                        {opt.name}
+                                        </button>
+                                    ))}
+                                    </div>
+                                )}
+                            </div>
 							</div>
 						</div>
 
