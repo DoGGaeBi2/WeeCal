@@ -64,22 +64,35 @@ function Dashboard({ tasks, addTask, setTasks }) {
         }, 150);
     };
 
-    // 🟢 체크박스 토글 함수 (애니메이션 후 '최신 상태(prev)'로 완벽하게 업데이트)
+    // 🟢 [수정됨] 체크박스 토글 함수 (Realtime 충돌 및 반전 버그 완벽 해결!)
     const toggleTask = async (id) => {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
+
+      // ✨ 핵심 1: '목표 상태'를 미리 변수로 딱 저장해 둠!
+      const targetStatus = !task.completed;
 
       // 1. 클릭하자마자 우측으로 스르륵 밀리는 애니메이션 시작
       setAnimatingIds(prev => [...prev, id]);
 
       // 2. DB 업데이트
-      await supabase.from('tasks').update({ completed: !task.completed }).eq('id', id);
+      const { error } = await supabase.from('tasks').update({ completed: targetStatus }).eq('id', id);
 
-      // 3. 0.3초(애니메이션 끝난 후) 뒤에 화면 상태 진짜로 업데이트! (수정됨: prev 사용)
+      if (error) {
+          console.error("완료 처리 에러:", error);
+          setAnimatingIds(prev => prev.filter(animId => animId !== id)); // 에러 나면 애니메이션 롤백
+          return;
+      }
+
+      // 3. 로그 기록 (옛날 상태 말고 정확히 목표 상태로 기록!)
+      recordLog(targetStatus ? '완료' : '미완료', task.title);
+
+      // 4. 0.3초(애니메이션 끝난 후) 뒤에 화면 정리
       setTimeout(() => {
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+        // ✨ 핵심 2: !t.completed(반대)가 아니라 targetStatus(목표값)으로 덮어씌움! 
+        // (Realtime이 이미 바꿨어도 똑같은 값으로 덮어쓰니까 안 뒤집힘!)
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: targetStatus } : t));
         setAnimatingIds(prev => prev.filter(animId => animId !== id));
-		recordLog(task.completed ? '미완료' : '완료', task.title);
       }, 300);
     };
 
