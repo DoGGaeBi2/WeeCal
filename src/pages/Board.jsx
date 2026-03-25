@@ -13,6 +13,47 @@ function Board() {
     const [selectedPost, setSelectedPost] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [myId, setMyId] = useState(null)
+    
+    // 🟢 [추가] 내가 고정한 게시글 ID들을 모아둘 배열
+    const [pinnedPostIds, setPinnedPostIds] = useState([]);
+
+    // 🟢 [추가] 내 ID가 확인되면, 내가 고정한 글 목록을 DB에서 가져오기
+    useEffect(() => {
+        if (myId) {
+            fetchPinnedPosts();
+        }
+    }, [myId]);
+
+    async function fetchPinnedPosts() {
+        const { data } = await supabase.from('pinned_posts').select('post_id').eq('user_id', myId);
+        if (data) setPinnedPostIds(data.map(p => p.post_id));
+    }
+
+    // 🟢 [추가] 핀(고정) 꽂기 / 빼기 함수
+    const togglePin = async (e, postId) => {
+        e.stopPropagation(); // 글 상세페이지로 넘어가는 거 방지
+        const isPinned = pinnedPostIds.includes(postId);
+        
+        if (isPinned) {
+            // 이미 고정됨 -> 핀 빼기
+            await supabase.from('pinned_posts').delete().match({ user_id: myId, post_id: postId });
+            setPinnedPostIds(prev => prev.filter(id => id !== postId));
+        } else {
+            // 고정 안 됨 -> 핀 꽂기
+            await supabase.from('pinned_posts').insert({ user_id: myId, post_id: postId });
+            setPinnedPostIds(prev => [...prev, postId]);
+        }
+    };
+
+    // 🟢 [추가] 목록 정렬! (고정된 글 무조건 위로, 나머지는 최신순)
+    const sortedPosts = [...posts].sort((a, b) => {
+        const aPinned = pinnedPostIds.includes(a.id);
+        const bPinned = pinnedPostIds.includes(b.id);
+        
+        if (aPinned && !bPinned) return -1; // a가 핀이면 위로
+        if (!aPinned && bPinned) return 1;  // b가 핀이면 위로
+        return new Date(b.created_at) - new Date(a.created_at); // 둘 다 핀이거나 둘 다 아니면 날짜순
+    });
 
     // 글쓰기/수정용 상태
     const [editingPostId, setEditingPostId] = useState(null);
@@ -295,25 +336,45 @@ function Board() {
                 {/* 1. 목록 뷰 (Blog List Mode) */}
                 {viewMode === 'list' && (
                     <div className="flex flex-col border-t border-stone-100">
-                        {posts.length > 0 ? posts.map(post => (
-                            <div 
-                                key={post.id} 
-                                onClick={() => goDetail(post)}
-                                className="flex justify-between items-center py-5 border-b border-stone-50 hover:bg-stone-50 px-4 cursor-pointer transition-colors group"
-                            >
-                                <div className="flex flex-col gap-1 text-left">
-                                    <h3 className="font-bold text-stone-800 group-hover:text-orange-500 transition-colors">{post.title}</h3>
-                                    <div className="flex items-center gap-3 text-[11px] text-stone-400">
-                                        <span className="font-bold text-stone-500">{post.author_name}</span>
-                                        <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                                        <span>댓글 {post.comments?.length || 0}</span>
+                        {sortedPosts.length > 0 ? sortedPosts.map(post => {
+                            const isPinned = pinnedPostIds.includes(post.id); // 🟢 이 글이 핀 고정되었는지 확인
+                            
+                            return (
+                                <div 
+                                    key={post.id} 
+                                    onClick={() => goDetail(post)}
+                                    // 🟢 핀 꽂힌 글은 오렌지색 배경으로 살짝 강조!
+                                    className={`flex justify-between items-center py-5 border-b border-stone-50 px-4 cursor-pointer transition-colors group ${isPinned ? 'bg-orange-50/50 hover:bg-orange-50' : 'hover:bg-stone-50'}`}
+                                >
+                                    <div className="flex flex-col gap-1 text-left">
+                                        <div className="flex items-center gap-2">
+                                            {/* 🟢 핀 고정 아이콘 (클릭 시 토글) */}
+                                            <button 
+                                                onClick={(e) => togglePin(e, post.id)}
+                                                className={`p-1 rounded-md transition-colors hover:bg-stone-200 ${isPinned ? 'text-orange-500' : 'text-stone-300'}`}
+                                                title={isPinned ? "고정 해제" : "상단 고정"}
+                                            >
+                                                <svg fill={isPinned ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={isPinned ? 0 : 2} stroke="currentColor" className="w-4 h-4">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                                                </svg>
+                                            </button>
+                                            <h3 className={`font-bold transition-colors ${isPinned ? 'text-orange-600' : 'text-stone-800 group-hover:text-orange-500'}`}>
+                                                {post.title}
+                                            </h3>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-[11px] text-stone-400 ml-8">
+                                            <span className="font-bold text-stone-500">{post.author_name}</span>
+                                            <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                                            <span>댓글 {post.comments?.length || 0}</span>
+                                        </div>
                                     </div>
+                                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-stone-300 group-hover:text-orange-300">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                    </svg>
                                 </div>
-                                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-stone-300 group-hover:text-orange-300">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                                </svg>
-                            </div>
-                        )) : (
+                            );
+                        }) : (
                             <p className="py-20 text-stone-400 italic">등록된 게시물이 없습니다.</p>
                         )}
                     </div>
